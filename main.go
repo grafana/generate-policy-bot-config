@@ -97,10 +97,17 @@ type appFlags struct {
 // listWorkflows returns a list of all the workflows under the root directory
 // given in the arguments.
 func (af *appFlags) listWorkflows() ([]string, error) {
-	allWorkflows, err := fs.Glob(af.Args.Root, ".github/workflows/*.yml")
+	ymlFiles, err := fs.Glob(af.Args.Root, ".github/workflows/*.yml")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list workflows: %w", err)
 	}
+
+	yamlFiles, err := fs.Glob(af.Args.Root, ".github/workflows/*.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workflows: %w", err)
+	}
+
+	allWorkflows := append(ymlFiles, yamlFiles...)
 
 	if len(allWorkflows) == 0 {
 		return nil, errNoWorkflows{}

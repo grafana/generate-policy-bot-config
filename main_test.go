@@ -88,6 +88,7 @@ func TestListWorkflows(t *testing.T) {
 	mapFS := fstest.MapFS{
 		".github/workflows/workflow1.yml":      &fstest.MapFile{Data: []byte("")},
 		".github/workflows/workflow2.yml":      &fstest.MapFile{Data: []byte("")},
+		".github/workflows/workflow3.yaml":     &fstest.MapFile{Data: []byte("")},
 		".github/workflows/not-a-workflow.txt": &fstest.MapFile{Data: []byte("")},
 	}
 
@@ -96,7 +97,7 @@ func TestListWorkflows(t *testing.T) {
 	workflows, err := conf.listWorkflows()
 	require.NoError(t, err)
 
-	require.ElementsMatch(t, workflows, []string{".github/workflows/workflow1.yml", ".github/workflows/workflow2.yml"})
+	require.ElementsMatch(t, workflows, []string{".github/workflows/workflow1.yml", ".github/workflows/workflow2.yml", ".github/workflows/workflow3.yaml"})
 }
 
 func TestParsePRWorkflows(t *testing.T) {
