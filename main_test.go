@@ -151,7 +151,7 @@ on:
 						[]interface{}{
 							map[string]interface{}{
 								"and": []interface{}{
-									".github/workflows/workflow.yml built or skipped",
+									"Workflow .github/workflows/workflow.yml succeeded or skipped",
 									defaultToApproval,
 								},
 							},
@@ -160,7 +160,7 @@ on:
 				},
 				ApprovalRules: []*approval.Rule{
 					{
-						Name: ".github/workflows/workflow.yml built or skipped",
+						Name: "Workflow .github/workflows/workflow.yml succeeded or skipped",
 						Predicates: predicate.Predicates{
 							ChangedFiles: &predicate.ChangedFiles{
 								Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
@@ -321,7 +321,7 @@ func expectedConfig(t *testing.T) policy.Config {
 			Approval: approval.Policy{
 				map[string]interface{}{
 					"and": []interface{}{
-						".github/workflows/workflow.yml built or skipped",
+						"Workflow .github/workflows/workflow.yml succeeded or skipped",
 						defaultToApproval,
 					},
 				},
@@ -332,7 +332,7 @@ func expectedConfig(t *testing.T) policy.Config {
 		},
 		ApprovalRules: []*approval.Rule{
 			{
-				Name: ".github/workflows/workflow.yml built or skipped",
+				Name: "Workflow .github/workflows/workflow.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
 						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),

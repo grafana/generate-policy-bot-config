@@ -89,7 +89,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				},
 			},
 			expected: &approval.Rule{
-				Name: ".github/workflows/test.yml built or skipped",
+				Name: "Workflow .github/workflows/test.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
 						Paths:       mustRegexpsFromGlobs(t, []string{"src/**"}),
@@ -115,7 +115,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				},
 			},
 			expected: &approval.Rule{
-				Name: ".github/workflows/build.yml built or skipped",
+				Name: "Workflow .github/workflows/build.yml succeeded or skipped",
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
@@ -176,8 +176,8 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 			Approval: approval.Policy{
 				map[string]interface{}{
 					"and": []interface{}{
-						".github/workflows/build.yml built or skipped",
-						".github/workflows/test.yml built or skipped",
+						"Workflow .github/workflows/build.yml succeeded or skipped",
+						"Workflow .github/workflows/test.yml succeeded or skipped",
 						defaultToApproval,
 					},
 				},
@@ -185,7 +185,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 		},
 		ApprovalRules: []*approval.Rule{
 			{
-				Name: ".github/workflows/build.yml built or skipped",
+				Name: "Workflow .github/workflows/build.yml succeeded or skipped",
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
@@ -196,7 +196,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 				},
 			},
 			{
-				Name: ".github/workflows/test.yml built or skipped",
+				Name: "Workflow .github/workflows/test.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
 						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
@@ -230,8 +230,8 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 	require.Equal(t, expectedBytes, resultBytes)
 
 	// Check the order of the approval rules
-	require.Equal(t, ".github/workflows/build.yml built or skipped", result.ApprovalRules[0].Name)
-	require.Equal(t, ".github/workflows/test.yml built or skipped", result.ApprovalRules[1].Name)
+	require.Equal(t, "Workflow .github/workflows/build.yml succeeded or skipped", result.ApprovalRules[0].Name)
+	require.Equal(t, "Workflow .github/workflows/test.yml succeeded or skipped", result.ApprovalRules[1].Name)
 }
 
 func BenchmarkMakeApprovalRule(b *testing.B) {

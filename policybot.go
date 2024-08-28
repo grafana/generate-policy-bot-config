@@ -55,7 +55,7 @@ func regexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 }
 
 func makeApprovalRule(path string, wf gitHubWorkflow) (*approval.Rule, error) {
-	name := fmt.Sprintf("%s built or skipped", path)
+	name := fmt.Sprintf("Workflow %s succeeded or skipped", path)
 
 	pathRegexes, err := regexpsFromGlobs(wf.paths())
 	if err != nil {
