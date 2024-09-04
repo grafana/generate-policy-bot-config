@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"iter"
 	"log/slog"
 	"slices"
+	"strings"
 
 	"github.com/palantir/policy-bot/policy"
 	"github.com/palantir/policy-bot/policy/approval"
@@ -24,10 +26,25 @@ const defaultToApproval = "default to approval"
 // allow the approval rule.
 var skippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 
-// regexpsFromGlobs converts a list of glob patterns to a list of regular
-// expressions in policy-bot's `common.Regexp` type. A conversion is needed
-// because policy-bot takes regular expressions and GitHub Actions workflows use
-// glob patterns.
+// regexpsFromGlobs converts a sequence of glob patterns into a sequence of regular
+// expressions. A conversion is needed because policy-bot takes regular
+// expressions and GitHub Actions workflows use glob patterns.
+func regexpStringsFromGlobs(globs iter.Seq[string]) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for glob := range globs {
+			regexp := globre.RegexFromGlob(glob)
+
+			if !yield(regexp) {
+				return
+			}
+		}
+	}
+}
+
+// regexpsFromGlobs converts a sequence of glob patterns into a sequence of
+// regular expressions in `policy-bot`'s `common.Regexp` wrapper type. If any of
+// the glob patterns are invalid, it returns an error containing the invalid
+// globs.
 func regexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 	var errors errInvalidGlobs
 
@@ -54,6 +71,18 @@ func regexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 	return regexps, nil
 }
 
+func branchRegexp(branches []string) (common.Regexp, error) {
+	if len(branches) == 0 {
+		return common.Regexp{}, nil
+	}
+
+	branchFilterRegexps := slices.Collect(regexpStringsFromGlobs(slices.Values(branches)))
+
+	regex, err := common.NewRegexp(fmt.Sprintf("(%s)", strings.Join(branchFilterRegexps, "|")))
+
+	return regex, err
+}
+
 func makeApprovalRule(path string, wf gitHubWorkflow) (*approval.Rule, error) {
 	name := fmt.Sprintf("Workflow %s succeeded or skipped", path)
 
@@ -72,6 +101,17 @@ func makeApprovalRule(path string, wf gitHubWorkflow) (*approval.Rule, error) {
 		preds.ChangedFiles = &predicate.ChangedFiles{
 			Paths:       pathRegexes,
 			IgnorePaths: ignoreRegexes,
+		}
+	}
+
+	branchRegexp, err := branchRegexp(wf.branches())
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse branch filters: %w", err)
+	}
+
+	if branchRegexp != (common.Regexp{}) {
+		preds.TargetsBranch = &predicate.TargetsBranch{
+			Pattern: branchRegexp,
 		}
 	}
 

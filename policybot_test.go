@@ -11,6 +11,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func mustRegexp(t *testing.T, pattern string) common.Regexp {
+	t.Helper()
+
+	result, err := common.NewRegexp(pattern)
+	require.NoError(t, err)
+
+	return result
+}
+
 func mustRegexpsFromGlobs(t *testing.T, globs []string) []common.Regexp {
 	t.Helper()
 
@@ -127,12 +136,96 @@ func TestMakeApprovalRule(t *testing.T) {
 			},
 		},
 		{
-			name: "Invalid glob pattern",
+			name: "workflow with branches",
+			path: ".github/workflows/test.yml",
+			workflow: gitHubWorkflow{
+				On: githubWorkflowHeader{
+					PullRequest: &gitHubWorkflowOnPullRequest{
+						Branches: []string{"main", "develop"},
+					},
+				},
+			},
+			expected: &approval.Rule{
+				Name: "Workflow .github/workflows/test.yml succeeded or skipped",
+				Predicates: predicate.Predicates{
+					TargetsBranch: &predicate.TargetsBranch{
+						Pattern: mustRegexp(t, "(^main$|^develop$)"),
+					},
+				},
+				Requires: approval.Requires{
+					Conditions: predicate.Predicates{
+						HasWorkflowResult: &predicate.HasWorkflowResult{
+							Conclusions: skippedOrSuccess,
+							Workflows:   []string{".github/workflows/test.yml"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "workflow with paths, ignore paths, and branches",
+			path: ".github/workflows/test.yml",
+			workflow: gitHubWorkflow{
+				On: githubWorkflowHeader{
+					PullRequest: &gitHubWorkflowOnPullRequest{
+						Paths:       []string{"src/**"},
+						PathsIgnore: []string{"docs/**"},
+						Branches:    []string{"main", "develop"},
+					},
+				},
+			},
+			expected: &approval.Rule{
+				Name: "Workflow .github/workflows/test.yml succeeded or skipped",
+				Predicates: predicate.Predicates{
+					ChangedFiles: &predicate.ChangedFiles{
+						Paths:       mustRegexpsFromGlobs(t, []string{"src/**"}),
+						IgnorePaths: mustRegexpsFromGlobs(t, []string{"docs/**"}),
+					},
+					TargetsBranch: &predicate.TargetsBranch{
+						Pattern: mustRegexp(t, "(^main$|^develop$)"),
+					},
+				},
+				Requires: approval.Requires{
+					Conditions: predicate.Predicates{
+						HasWorkflowResult: &predicate.HasWorkflowResult{
+							Conclusions: skippedOrSuccess,
+							Workflows:   []string{".github/workflows/test.yml"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Invalid glob pattern (path)",
 			path: ".github/workflows/invalid.yml",
 			workflow: gitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Paths: []string{"[invalid-glob"},
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "Invalid glob pattern (ignore path)",
+			path: ".github/workflows/invalid.yml",
+			workflow: gitHubWorkflow{
+				On: githubWorkflowHeader{
+					PullRequest: &gitHubWorkflowOnPullRequest{
+						PathsIgnore: []string{"[invalid-glob"},
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "Invalid glob pattern (branch)",
+			path: ".github/workflows/invalid.yml",
+			workflow: gitHubWorkflow{
+				On: githubWorkflowHeader{
+					PullRequest: &gitHubWorkflowOnPullRequest{
+						Branches: []string{"[invalid-glob"},
 					},
 				},
 			},

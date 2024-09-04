@@ -112,6 +112,19 @@ func (wf gitHubWorkflow) isPullRequestWorkflow() bool {
 	return wf.On.PullRequest != nil || wf.On.PullRequestTarget != nil
 }
 
+// branches returns the combined branches from PullRequest and PullRequestTarget.
+// These are the branches that might trigger a run on a pull request.
+func (wf gitHubWorkflow) branches() []string {
+	var branches []string
+	if wf.On.PullRequest != nil {
+		branches = append(branches, wf.On.PullRequest.Branches...)
+	}
+	if wf.On.PullRequestTarget != nil {
+		branches = append(branches, wf.On.PullRequestTarget.Branches...)
+	}
+	return branches
+}
+
 // paths returns the combined paths from PullRequest and PullRequestTarget.
 // These are the paths that might trigger a run on a pull request.
 func (wf gitHubWorkflow) paths() []string {
