@@ -171,7 +171,11 @@ func (workflows gitHubWorkflowCollection) policyBotConfig() policy.Config {
 
 		andApprovals = approval.Policy{
 			map[string]interface{}{
-				"and": policyApprovals,
+				"or": []interface{}{
+					map[string]interface{}{
+						"and": policyApprovals,
+					},
+				},
 			},
 		}
 	}

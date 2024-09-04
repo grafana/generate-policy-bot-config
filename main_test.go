@@ -150,9 +150,13 @@ on:
 					Approval: approval.Policy(
 						[]interface{}{
 							map[string]interface{}{
-								"and": []interface{}{
-									"Workflow .github/workflows/workflow.yml succeeded or skipped",
-									defaultToApproval,
+								"or": []interface{}{
+									map[string]interface{}{
+										"and": []interface{}{
+											"Workflow .github/workflows/workflow.yml succeeded or skipped",
+											defaultToApproval,
+										},
+									},
 								},
 							},
 						},
@@ -320,9 +324,13 @@ func expectedConfig(t *testing.T) policy.Config {
 		Policy: policy.Policy{
 			Approval: approval.Policy{
 				map[string]interface{}{
-					"and": []interface{}{
-						"Workflow .github/workflows/workflow.yml succeeded or skipped",
-						defaultToApproval,
+					"or": []interface{}{
+						map[string]interface{}{
+							"and": []interface{}{
+								"Workflow .github/workflows/workflow.yml succeeded or skipped",
+								defaultToApproval,
+							},
+						},
 					},
 				},
 				map[string]interface{}{

@@ -268,10 +268,14 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 		Policy: policy.Policy{
 			Approval: approval.Policy{
 				map[string]interface{}{
-					"and": []interface{}{
-						"Workflow .github/workflows/build.yml succeeded or skipped",
-						"Workflow .github/workflows/test.yml succeeded or skipped",
-						defaultToApproval,
+					"or": []interface{}{
+						map[string]interface{}{
+							"and": []interface{}{
+								"Workflow .github/workflows/build.yml succeeded or skipped",
+								"Workflow .github/workflows/test.yml succeeded or skipped",
+								defaultToApproval,
+							},
+						},
 					},
 				},
 			},

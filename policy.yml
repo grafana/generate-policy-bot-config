@@ -2,6 +2,9 @@
 
 policy:
   approval:
+    - or:
+        - MERGE_WITH_GENERATED
+        - override policies
     - policy bot config is valid when modified
 
 approval_rules:
@@ -14,3 +17,15 @@ approval_rules:
       conditions:
         has_successful_status:
           - Validate policy bot config
+
+  - name: override policies
+    requires:
+      count: 1
+      permissions:
+        - write
+    options:
+      methods:
+        comments:
+          - "policy bot: approve"
+          - "policy-bot: approve"
+        github_review: false

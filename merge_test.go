@@ -13,7 +13,7 @@ import (
 )
 
 func TestMergeConfigs_MergeApprovalPolicies(t *testing.T) {
-	left := policy.Config{
+	generated := policy.Config{
 		Policy: policy.Policy{
 			Approval: approval.Policy{
 				map[string][]string{
@@ -29,7 +29,7 @@ func TestMergeConfigs_MergeApprovalPolicies(t *testing.T) {
 			{Name: "rule2"},
 		},
 	}
-	right := policy.Config{
+	mergeWith := policy.Config{
 		Policy: policy.Policy{
 			Approval: approval.Policy{
 				map[string][]string{
@@ -70,13 +70,89 @@ func TestMergeConfigs_MergeApprovalPolicies(t *testing.T) {
 		},
 	}
 
-	merged, err := mergeConfigs(left, right)
+	merged, err := mergeConfigs(generated, mergeWith)
 	require.NoError(t, err)
 	assert.Equal(t, expected, merged)
 }
 
-func TestMergeConfigs_MergeWithDisapprovalInRightConfig(t *testing.T) {
-	left := policy.Config{
+func TestMergeConfigs_MergeApprovalPoliciesWithGeneratedApproval(t *testing.T) {
+	generated := policy.Config{
+		Policy: policy.Policy{
+			Approval: approval.Policy{
+				map[string]interface{}{
+					"or": []interface{}{
+						map[string]interface{}{
+							"and": []interface{}{
+								"rule1",
+								"rule2",
+							},
+						},
+					},
+				},
+			},
+		},
+		ApprovalRules: []*approval.Rule{
+			{Name: "rule1"},
+			{Name: "rule2"},
+		},
+	}
+	mergeWith := policy.Config{
+		Policy: policy.Policy{
+			Approval: approval.Policy{
+				map[string]interface{}{
+					"or": []interface{}{
+						"MERGE_WITH_GENERATED",
+						"rule3",
+					},
+				},
+				map[string]interface{}{
+					"and": []interface{}{
+						"rule4",
+					},
+				},
+			},
+		},
+		ApprovalRules: []*approval.Rule{
+			{Name: "rule3"},
+			{Name: "rule4"},
+		},
+	}
+	expected := policy.Config{
+		Policy: policy.Policy{
+			Approval: approval.Policy{
+				map[string]interface{}{
+					"or": []interface{}{
+						map[string]interface{}{
+							"and": []interface{}{
+								"rule1",
+								"rule2",
+							},
+						},
+						"rule3",
+					},
+				},
+				map[string]interface{}{
+					"and": []interface{}{
+						"rule4",
+					},
+				},
+			},
+		},
+		ApprovalRules: []*approval.Rule{
+			{Name: "rule1"},
+			{Name: "rule2"},
+			{Name: "rule3"},
+			{Name: "rule4"},
+		},
+	}
+
+	merged, err := mergeConfigs(generated, mergeWith)
+	require.NoError(t, err)
+	assert.Equal(t, expected, merged)
+}
+
+func TestMergeConfigs_MergeWithDisapprovalInmergeWithConfig(t *testing.T) {
+	generated := policy.Config{
 		Policy: policy.Policy{
 			Approval: approval.Policy{
 				map[string][]string{
@@ -92,7 +168,7 @@ func TestMergeConfigs_MergeWithDisapprovalInRightConfig(t *testing.T) {
 			{Name: "rule2"},
 		},
 	}
-	right := policy.Config{
+	mergeWith := policy.Config{
 		Policy: policy.Policy{
 			Disapproval: &disapproval.Policy{
 				Predicates: predicate.Predicates{
@@ -141,13 +217,13 @@ func TestMergeConfigs_MergeWithDisapprovalInRightConfig(t *testing.T) {
 		},
 	}
 
-	merged, err := mergeConfigs(left, right)
+	merged, err := mergeConfigs(generated, mergeWith)
 	require.NoError(t, err)
 	assert.Equal(t, expected, merged)
 }
 
 func TestMergeConfigs_ErrorOnBothConfigsHavingDisapproval(t *testing.T) {
-	left := policy.Config{
+	generated := policy.Config{
 		Policy: policy.Policy{
 			Disapproval: &disapproval.Policy{
 				Predicates: predicate.Predicates{
@@ -158,7 +234,7 @@ func TestMergeConfigs_ErrorOnBothConfigsHavingDisapproval(t *testing.T) {
 			},
 		},
 	}
-	right := policy.Config{
+	mergeWith := policy.Config{
 		Policy: policy.Policy{
 			Disapproval: &disapproval.Policy{
 				Predicates: predicate.Predicates{
@@ -170,7 +246,7 @@ func TestMergeConfigs_ErrorOnBothConfigsHavingDisapproval(t *testing.T) {
 		},
 	}
 
-	_, err := mergeConfigs(left, right)
+	_, err := mergeConfigs(generated, mergeWith)
 	require.ErrorIs(t, err, errMergeDisapproval{})
 }
 
