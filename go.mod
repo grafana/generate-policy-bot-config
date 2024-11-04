@@ -1,4 +1,4 @@
-module github.com/grafana/deployment_tools/scripts/generate-policy-bot.yml
+module github.com/grafana/generate-policy-bot-config
 
 go 1.23.0
 
