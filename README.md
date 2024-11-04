@@ -15,9 +15,22 @@ triggered_. We need to implement it externally.
 
 ## Usage
 
+_We're assuming Policy Bot is already configured and working for your
+organisation._
+
+Generate a configuration file like this:
+
 ```bash
 go run . --output ../../.policy.yml --log-level=debug --merge-with=policy.yml
 ```
+
+Commit `.policy.yml` to your repository. (Use a different name if your Policy
+Bot configuration requires it.) If it's not already configured, configure Policy
+Bot as normal: by setting up a [ruleset] which has _only_ Policy Bot's check as
+required for pull requests to be mergeable. This check will act as a proxy for
+your other workflows.
+
+[ruleset]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets
 
 See `--help` for more documentation.
 
