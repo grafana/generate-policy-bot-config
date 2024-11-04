@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -17,14 +17,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultToApproval = "default to approval"
+const DefaultToApproval = "default to approval"
 
-// skippedOrSuccess contains the conclusions we always look for in a workflow
+// SkippedOrSuccess contains the conclusions we always look for in a workflow
 // run's conclusion. We only look at workflow runs which happened at all
 // (because of the path filters). But we don't know if there was an `if`
 // condition on any/all of the jobs. If there was, that's fine, and we should
 // allow the approval rule.
-var skippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
+var SkippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 
 // regexpsFromGlobs converts a sequence of glob patterns into a sequence of regular
 // expressions. A conversion is needed because policy-bot takes regular
@@ -41,11 +41,11 @@ func regexpStringsFromGlobs(globs iter.Seq[string]) iter.Seq[string] {
 	}
 }
 
-// regexpsFromGlobs converts a sequence of glob patterns into a sequence of
+// RegexpsFromGlobs converts a sequence of glob patterns into a sequence of
 // regular expressions in `policy-bot`'s `common.Regexp` wrapper type. If any of
 // the glob patterns are invalid, it returns an error containing the invalid
 // globs.
-func regexpsFromGlobs(globs []string) ([]common.Regexp, error) {
+func RegexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 	var errors errInvalidGlobs
 
 	regexps := make([]common.Regexp, len(globs))
@@ -83,15 +83,15 @@ func branchRegexp(branches []string) (common.Regexp, error) {
 	return regex, err
 }
 
-func makeApprovalRule(path string, wf gitHubWorkflow) (*approval.Rule, error) {
+func makeApprovalRule(path string, wf GitHubWorkflow) (*approval.Rule, error) {
 	name := fmt.Sprintf("Workflow %s succeeded or skipped", path)
 
-	pathRegexes, err := regexpsFromGlobs(wf.paths())
+	pathRegexes, err := RegexpsFromGlobs(wf.paths())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse path filters: %w", err)
 	}
 
-	ignoreRegexes, err := regexpsFromGlobs(wf.ignorePaths())
+	ignoreRegexes, err := RegexpsFromGlobs(wf.ignorePaths())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse ignore path filters: %w", err)
 	}
@@ -118,7 +118,7 @@ func makeApprovalRule(path string, wf gitHubWorkflow) (*approval.Rule, error) {
 	requires := approval.Requires{
 		Conditions: predicate.Predicates{
 			HasWorkflowResult: &predicate.HasWorkflowResult{
-				Conclusions: skippedOrSuccess,
+				Conclusions: SkippedOrSuccess,
 				Workflows:   []string{path},
 			},
 		},
@@ -131,7 +131,7 @@ func makeApprovalRule(path string, wf gitHubWorkflow) (*approval.Rule, error) {
 	}, nil
 }
 
-func (workflows gitHubWorkflowCollection) policyBotConfig() policy.Config {
+func (workflows GitHubWorkflowCollection) PolicyBotConfig() policy.Config {
 	approvalRules := make([]*approval.Rule, 0, len(workflows))
 	policyApprovals := make([]interface{}, 0, len(workflows))
 
@@ -165,9 +165,9 @@ func (workflows gitHubWorkflowCollection) policyBotConfig() policy.Config {
 		// not approved. So PRs which don't cause any of the conditional
 		// workflows to run would get stuck.
 		approvalRules = append(approvalRules, &approval.Rule{
-			Name: defaultToApproval,
+			Name: DefaultToApproval,
 		})
-		policyApprovals = append(policyApprovals, defaultToApproval)
+		policyApprovals = append(policyApprovals, DefaultToApproval)
 
 		andApprovals = approval.Policy{
 			map[string]interface{}{
@@ -194,7 +194,7 @@ func (workflows gitHubWorkflowCollection) policyBotConfig() policy.Config {
 	return config
 }
 
-func writeYamlToWriter(w io.Writer, data interface{}) error {
+func WriteYamlToWriter(w io.Writer, data interface{}) error {
 	enc := yaml.NewEncoder(w)
 	enc.SetIndent(2)
 	defer enc.Close()

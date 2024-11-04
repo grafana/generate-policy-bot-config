@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"testing"
@@ -70,7 +70,7 @@ func TestMergeConfigs_MergeApprovalPolicies(t *testing.T) {
 		},
 	}
 
-	merged, err := mergeConfigs(generated, mergeWith)
+	merged, err := MergeConfigs(generated, mergeWith)
 	require.NoError(t, err)
 	assert.Equal(t, expected, merged)
 }
@@ -146,7 +146,7 @@ func TestMergeConfigs_MergeApprovalPoliciesWithGeneratedApproval(t *testing.T) {
 		},
 	}
 
-	merged, err := mergeConfigs(generated, mergeWith)
+	merged, err := MergeConfigs(generated, mergeWith)
 	require.NoError(t, err)
 	assert.Equal(t, expected, merged)
 }
@@ -217,7 +217,7 @@ func TestMergeConfigs_MergeWithDisapprovalInmergeWithConfig(t *testing.T) {
 		},
 	}
 
-	merged, err := mergeConfigs(generated, mergeWith)
+	merged, err := MergeConfigs(generated, mergeWith)
 	require.NoError(t, err)
 	assert.Equal(t, expected, merged)
 }
@@ -246,7 +246,7 @@ func TestMergeConfigs_ErrorOnBothConfigsHavingDisapproval(t *testing.T) {
 		},
 	}
 
-	_, err := mergeConfigs(generated, mergeWith)
+	_, err := MergeConfigs(generated, mergeWith)
 	require.ErrorIs(t, err, errMergeDisapproval{})
 }
 

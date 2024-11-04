@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"errors"
@@ -72,18 +72,18 @@ func (f *fakeWriteCloserRenamerRemover) Remove() error {
 }
 
 func TestRenamingWriterStdout(t *testing.T) {
-	var rw renamingWriter
+	var rw RenamingWriter
 	err := rw.UnmarshalFlag("-")
 	require.NoError(t, err)
-	require.IsType(t, nopRenamerRemover{}, rw.writeCloserRenamerRemover)
-	require.Equal(t, os.Stdout, rw.writeCloserRenamerRemover.(nopRenamerRemover).WriteCloser)
+	require.IsType(t, NopRenamerRemover{}, rw.WriteCloserRenamerRemover)
+	require.Equal(t, os.Stdout, rw.WriteCloserRenamerRemover.(NopRenamerRemover).WriteCloser)
 }
 
 func TestRenamingWriterFile(t *testing.T) {
 	tempDir := t.TempDir()
 	destPath := filepath.Join(tempDir, "output.txt")
 
-	var rw renamingWriter
+	var rw RenamingWriter
 	err := rw.UnmarshalFlag(destPath)
 	require.NoError(t, err)
 
@@ -109,7 +109,7 @@ func TestRenamingWriterNonWritableDestination(t *testing.T) {
 
 	destPath := filepath.Join(nonWritableDir, "output.txt")
 
-	var rw renamingWriter
+	var rw RenamingWriter
 	err = rw.UnmarshalFlag(destPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to create temporary file")
@@ -117,7 +117,7 @@ func TestRenamingWriterNonWritableDestination(t *testing.T) {
 
 func TestRenamingWriterErrorOnWrite(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{writeShouldError: true}
-	rw := renamingWriter{writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{WriteCloserRenamerRemover: fake}
 
 	_, err := rw.Write([]byte("test"))
 	require.ErrorIs(t, err, errFakeWrite)
@@ -126,7 +126,7 @@ func TestRenamingWriterErrorOnWrite(t *testing.T) {
 
 func TestRenamingWriterErrorOnClose(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{closeShouldError: true}
-	rw := renamingWriter{writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{WriteCloserRenamerRemover: fake}
 
 	err := rw.Close()
 	require.ErrorIs(t, err, errFakeClose)
@@ -137,7 +137,7 @@ func TestRenamingWriterErrorOnClose(t *testing.T) {
 
 func TestRenamingWriterErrorOnRename(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{renameShouldError: true}
-	rw := renamingWriter{dest: "foo", writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{dest: "foo", WriteCloserRenamerRemover: fake}
 
 	err := rw.Close()
 	var fakeRenameErr errFakeRename
@@ -151,7 +151,7 @@ func TestRenamingWriterErrorOnRename(t *testing.T) {
 
 func TestRenamingWriterErrorOnRenameAndRemove(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{renameShouldError: true, removeShouldError: true}
-	rw := renamingWriter{dest: "dest", writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{dest: "dest", WriteCloserRenamerRemover: fake}
 
 	err := rw.Close()
 	var fakeRenameErr errFakeRename
@@ -165,7 +165,7 @@ func TestRenamingWriterErrorOnRenameAndRemove(t *testing.T) {
 
 func TestRenamingWriterAbort(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{}
-	rw := renamingWriter{writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{WriteCloserRenamerRemover: fake}
 
 	_, err := rw.Write([]byte("test"))
 	require.NoError(t, err)
@@ -180,7 +180,7 @@ func TestRenamingWriterAbort(t *testing.T) {
 
 func TestRenamingWriterAbortIgnoresCloseError(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{closeShouldError: true}
-	rw := renamingWriter{writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{WriteCloserRenamerRemover: fake}
 
 	err := rw.Abort()
 	require.NoError(t, err)
@@ -190,7 +190,7 @@ func TestRenamingWriterAbortIgnoresCloseError(t *testing.T) {
 
 func TestRenamingWriterAbortErrorOnRemove(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{removeShouldError: true}
-	rw := renamingWriter{writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{WriteCloserRenamerRemover: fake}
 
 	err := rw.Abort()
 	require.ErrorIs(t, err, errFakeRemove)
@@ -200,7 +200,7 @@ func TestRenamingWriterAbortErrorOnRemove(t *testing.T) {
 
 func TestRenamingWriterMultipleCalls(t *testing.T) {
 	fake := &fakeWriteCloserRenamerRemover{}
-	rw := renamingWriter{writeCloserRenamerRemover: fake}
+	rw := RenamingWriter{WriteCloserRenamerRemover: fake}
 
 	_, err := rw.Write([]byte("test"))
 	require.NoError(t, err)

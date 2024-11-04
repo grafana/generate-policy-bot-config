@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -8,39 +8,39 @@ import (
 	"path/filepath"
 )
 
-type writeCloserRenamerRemover interface {
+type WriteCloserRenamerRemover interface {
 	io.WriteCloser
 	RenameTo(dest string) error
 	Remove() error
 }
 
-// renamingWriter writes to a temporary file, and then renames it to the final
+// RenamingWriter writes to a temporary file, and then renames it to the final
 // destination on close. This is to avoid writing a partial file in case of an
 // error. Any type can be used here, as long as it is an io.WriteCloser which
 // implements renaming and removing the temporary file, corresponding to our
 // `Close()` and `Abort()` methods. This means a fake implementation can be used
 // in tests.
-type renamingWriter struct {
+type RenamingWriter struct {
 	dest string
-	writeCloserRenamerRemover
+	WriteCloserRenamerRemover
 }
 
 // Close closes the writer and renames the temporary file to the destination. It
 // is used when exiting successfully.
-func (rw *renamingWriter) Close() error {
-	if rw.writeCloserRenamerRemover == nil {
+func (rw *RenamingWriter) Close() error {
+	if rw.WriteCloserRenamerRemover == nil {
 		return nil
 	}
-	defer func() { rw.writeCloserRenamerRemover = nil }()
+	defer func() { rw.WriteCloserRenamerRemover = nil }()
 
 	slog.Debug("closing writer", "path", rw.dest)
 
-	if err := rw.writeCloserRenamerRemover.Close(); err != nil {
+	if err := rw.WriteCloserRenamerRemover.Close(); err != nil {
 		return fmt.Errorf("failed to close writer: %w", err)
 	}
 
-	if errRename := rw.writeCloserRenamerRemover.RenameTo(rw.dest); errRename != nil {
-		if errRemove := rw.writeCloserRenamerRemover.Remove(); errRemove != nil {
+	if errRename := rw.WriteCloserRenamerRemover.RenameTo(rw.dest); errRename != nil {
+		if errRemove := rw.WriteCloserRenamerRemover.Remove(); errRemove != nil {
 			return fmt.Errorf("failed to rename temporary file: %w; failed to remove temporary file: %w", errRename, errRemove)
 		}
 
@@ -52,34 +52,34 @@ func (rw *renamingWriter) Close() error {
 
 // Abort closes the writer and removes the temporary file. It is used when
 // exiting with an error.
-func (rw *renamingWriter) Abort() error {
-	if rw.writeCloserRenamerRemover == nil {
+func (rw *RenamingWriter) Abort() error {
+	if rw.WriteCloserRenamerRemover == nil {
 		return nil
 	}
-	defer func() { rw.writeCloserRenamerRemover = nil }()
+	defer func() { rw.WriteCloserRenamerRemover = nil }()
 
 	slog.Debug("aborting writer", "path", rw.dest)
 
-	if err := rw.writeCloserRenamerRemover.Close(); err != nil {
+	if err := rw.WriteCloserRenamerRemover.Close(); err != nil {
 		slog.Warn("failed to close output file", "error", err)
 	}
 
-	if err := rw.writeCloserRenamerRemover.Remove(); err != nil {
+	if err := rw.WriteCloserRenamerRemover.Remove(); err != nil {
 		return fmt.Errorf("failed to remove temporary file: %w", err)
 	}
 
 	return nil
 }
 
-// nopRenamerRemover is a writeCloserRenamerRemover that does nothing. It is
+// NopRenamerRemover is a writeCloserRenamerRemover that does nothing. It is
 // used when the destination is standard output, which does not need to be
 // renamed or removed.
-type nopRenamerRemover struct {
+type NopRenamerRemover struct {
 	io.WriteCloser
 }
 
-func (nopRenamerRemover) RenameTo(dest string) error { return nil }
-func (nopRenamerRemover) Remove() error              { return nil }
+func (NopRenamerRemover) RenameTo(dest string) error { return nil }
+func (NopRenamerRemover) Remove() error              { return nil }
 
 // fileRenamerRemover is a writeCloserRenamerRemover that renames and removes a
 // temporary file on the real filesystem. It is used when the destination is a
@@ -103,11 +103,11 @@ func (f fileRenamerRemover) Remove() error {
 // the writer writes to standard output. Otherwise, it writes to a temporary
 // file, which is renamed to the final destination on success and removed on
 // error.
-func (rw *renamingWriter) UnmarshalFlag(value string) error {
+func (rw *RenamingWriter) UnmarshalFlag(value string) error {
 	if value == "-" {
-		*rw = renamingWriter{
+		*rw = RenamingWriter{
 			dest:                      value,
-			writeCloserRenamerRemover: nopRenamerRemover{os.Stdout},
+			WriteCloserRenamerRemover: NopRenamerRemover{os.Stdout},
 		}
 		return nil
 	}
@@ -119,9 +119,9 @@ func (rw *renamingWriter) UnmarshalFlag(value string) error {
 		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
 
-	*rw = renamingWriter{
+	*rw = RenamingWriter{
 		dest: value,
-		writeCloserRenamerRemover: fileRenamerRemover{
+		WriteCloserRenamerRemover: fileRenamerRemover{
 			File: tempFile,
 		},
 	}

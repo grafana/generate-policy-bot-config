@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ func mustRegexp(t *testing.T, pattern string) common.Regexp {
 func mustRegexpsFromGlobs(t *testing.T, globs []string) []common.Regexp {
 	t.Helper()
 
-	result, err := regexpsFromGlobs(globs)
+	result, err := RegexpsFromGlobs(globs)
 	require.NoError(t, err)
 
 	return result
@@ -60,7 +60,7 @@ func TestRegexpsFromGlobs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := regexpsFromGlobs(tc.globs)
+			result, err := RegexpsFromGlobs(tc.globs)
 
 			if tc.expectedErrorGlobs != nil {
 				var errInvalidGlobs errInvalidGlobs
@@ -82,14 +82,14 @@ func TestMakeApprovalRule(t *testing.T) {
 	testCases := []struct {
 		name        string
 		path        string
-		workflow    gitHubWorkflow
+		workflow    GitHubWorkflow
 		expected    *approval.Rule
 		expectedErr bool
 	}{
 		{
 			name: "workflow with paths",
 			path: ".github/workflows/test.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Paths:       []string{"src/**"},
@@ -108,7 +108,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/test.yml"},
 						},
 					},
@@ -118,7 +118,7 @@ func TestMakeApprovalRule(t *testing.T) {
 		{
 			name: "workflow without paths",
 			path: ".github/workflows/build.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{},
 				},
@@ -128,7 +128,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/build.yml"},
 						},
 					},
@@ -138,7 +138,7 @@ func TestMakeApprovalRule(t *testing.T) {
 		{
 			name: "workflow with branches",
 			path: ".github/workflows/test.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Branches: []string{"main", "develop"},
@@ -155,7 +155,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/test.yml"},
 						},
 					},
@@ -165,7 +165,7 @@ func TestMakeApprovalRule(t *testing.T) {
 		{
 			name: "workflow with paths, ignore paths, and branches",
 			path: ".github/workflows/test.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Paths:       []string{"src/**"},
@@ -188,7 +188,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/test.yml"},
 						},
 					},
@@ -198,7 +198,7 @@ func TestMakeApprovalRule(t *testing.T) {
 		{
 			name: "Invalid glob pattern (path)",
 			path: ".github/workflows/invalid.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Paths: []string{"[invalid-glob"},
@@ -210,7 +210,7 @@ func TestMakeApprovalRule(t *testing.T) {
 		{
 			name: "Invalid glob pattern (ignore path)",
 			path: ".github/workflows/invalid.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						PathsIgnore: []string{"[invalid-glob"},
@@ -222,7 +222,7 @@ func TestMakeApprovalRule(t *testing.T) {
 		{
 			name: "Invalid glob pattern (branch)",
 			path: ".github/workflows/invalid.yml",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Branches: []string{"[invalid-glob"},
@@ -249,15 +249,15 @@ func TestMakeApprovalRule(t *testing.T) {
 }
 
 func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
-	workflows := gitHubWorkflowCollection{
-		".github/workflows/test.yml": gitHubWorkflow{
+	workflows := GitHubWorkflowCollection{
+		".github/workflows/test.yml": GitHubWorkflow{
 			On: githubWorkflowHeader{
 				PullRequest: &gitHubWorkflowOnPullRequest{
 					Paths: []string{"src/**"},
 				},
 			},
 		},
-		".github/workflows/build.yml": gitHubWorkflow{
+		".github/workflows/build.yml": GitHubWorkflow{
 			On: githubWorkflowHeader{
 				PullRequest: &gitHubWorkflowOnPullRequest{},
 			},
@@ -273,7 +273,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 							"and": []interface{}{
 								"Workflow .github/workflows/build.yml succeeded or skipped",
 								"Workflow .github/workflows/test.yml succeeded or skipped",
-								defaultToApproval,
+								DefaultToApproval,
 							},
 						},
 					},
@@ -286,7 +286,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/build.yml"},
 						},
 					},
@@ -302,19 +302,19 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/test.yml"},
 						},
 					},
 				},
 			},
 			{
-				Name: defaultToApproval,
+				Name: DefaultToApproval,
 			},
 		},
 	}
 
-	result := workflows.policyBotConfig()
+	result := workflows.PolicyBotConfig()
 
 	require.Equal(t, expected, result)
 
@@ -333,7 +333,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 
 func BenchmarkMakeApprovalRule(b *testing.B) {
 	path := ".github/workflows/test.yml"
-	workflow := gitHubWorkflow{
+	workflow := GitHubWorkflow{
 		On: githubWorkflowHeader{
 			PullRequest: &gitHubWorkflowOnPullRequest{
 				Paths:       []string{"src/**", "tests/**"},
@@ -358,7 +358,7 @@ func FuzzRegexpsFromGlobs(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, glob string) {
 		// We're not checking the result, just ensuring it doesn't panic
-		_, _ = regexpsFromGlobs([]string{glob})
+		_, _ = RegexpsFromGlobs([]string{glob})
 	})
 }
 
@@ -377,7 +377,7 @@ on:
 `))
 
 	f.Fuzz(func(t *testing.T, path string, yamlData []byte) {
-		var wf gitHubWorkflow
+		var wf GitHubWorkflow
 		// We're not checking the result, just ensuring it doesn't panic
 		_ = yaml.Unmarshal(yamlData, &wf)
 

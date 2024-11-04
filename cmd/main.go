@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/grafana/generate-policy-bot-config/internal"
 	"github.com/jessevdk/go-flags"
 	"github.com/lmittmann/tint"
 	"github.com/palantir/policy-bot/policy"
@@ -87,9 +88,9 @@ type rootArgs struct {
 }
 
 type appFlags struct {
-	OutputWriter *renamingWriter `long:"output" short:"o" description:"Output file. If this is \"-\", write to standard output" default:".policy.yml"`
-	LogLevel     *level          `long:"log-level" short:"l" description:"Log level"`
-	MergeConfig  reader          `long:"merge-with" short:"m" description:"File to merge with generated config. If this is \"-\", read from standard input. If empty, no merging occurs."`
+	OutputWriter *internal.RenamingWriter `long:"output" short:"o" description:"Output file. If this is \"-\", write to standard output" default:".policy.yml"`
+	LogLevel     *level                   `long:"log-level" short:"l" description:"Log level"`
+	MergeConfig  reader                   `long:"merge-with" short:"m" description:"File to merge with generated config. If this is \"-\", read from standard input. If empty, no merging occurs."`
 
 	Args rootArgs `positional-args:"yes" required:"yes"`
 }
@@ -110,7 +111,7 @@ func (af *appFlags) listWorkflows() ([]string, error) {
 	allWorkflows := append(ymlFiles, yamlFiles...)
 
 	if len(allWorkflows) == 0 {
-		return nil, errNoWorkflows{}
+		return nil, internal.ErrNoWorkflows{}
 	}
 
 	slog.Debug("Found workflows", "num_workflows", len(allWorkflows))
@@ -124,13 +125,13 @@ func (af *appFlags) listWorkflows() ([]string, error) {
 // or `pull_request_target`, as well as invalid workflows which cannot be
 // parsed or read, are ignored. The only way this function can fail is if it
 // encounters an error while listing the workflows.
-func (af *appFlags) parsePRWorkflows() (gitHubWorkflowCollection, error) {
+func (af *appFlags) parsePRWorkflows() (internal.GitHubWorkflowCollection, error) {
 	paths, err := af.listWorkflows()
 	if err != nil {
 		return nil, err
 	}
 
-	workflows := make(map[string]gitHubWorkflow)
+	workflows := make(map[string]internal.GitHubWorkflow)
 
 	for _, workflowPath := range paths {
 		contents, err := fs.ReadFile(af.Args.Root, workflowPath)
@@ -140,15 +141,15 @@ func (af *appFlags) parsePRWorkflows() (gitHubWorkflowCollection, error) {
 		}
 
 		slog.Debug("parsing workflow", "path", workflowPath)
-		var workflow gitHubWorkflow
+		var workflow internal.GitHubWorkflow
 		err = yaml.Unmarshal(contents, &workflow)
 		if err != nil {
-			err = errInvalidWorkflow{Path: workflowPath, Err: err}
+			err = internal.ErrInvalidWorkflow{Path: workflowPath, Err: err}
 			slog.Warn("failed to parse workflow", "path", workflowPath, "error", err)
 			continue
 		}
 
-		if !workflow.isPullRequestWorkflow() {
+		if !workflow.IsPullRequestWorkflow() {
 			slog.Debug("skipping non-PR workflow", "path", workflowPath)
 			continue
 		}
@@ -158,7 +159,7 @@ func (af *appFlags) parsePRWorkflows() (gitHubWorkflowCollection, error) {
 		// case. For example, if `types` is `[opened]`, a run will only be
 		// present when the PR is first opened but if it gets another push then
 		// there won't be one.
-		if !workflow.runsOnSynchronize() {
+		if !workflow.RunsOnSynchronize() {
 			slog.Debug("skipping workflow that doesn't run on synchronize", "path", workflowPath)
 			continue
 		}
@@ -175,7 +176,7 @@ func loadConfigFromReader(r io.Reader) (policy.Config, error) {
 	var config policy.Config
 	decoder := yaml.NewDecoder(r)
 	if err := decoder.Decode(&config); err != nil {
-		return policy.Config{}, errInvalidPolicyBotConfig{Err: err}
+		return policy.Config{}, internal.ErrInvalidPolicyBotConfig{Err: err}
 	}
 	return config, nil
 }
@@ -194,7 +195,7 @@ func (af *appFlags) run(name string) error {
 	}
 
 	// Generate a policy bot config from them
-	config := workflows.policyBotConfig()
+	config := workflows.PolicyBotConfig()
 
 	// Merge the generated config with an existing config, if one was provided
 	if af.MergeConfig.Reader != nil {
@@ -203,7 +204,7 @@ func (af *appFlags) run(name string) error {
 			return err
 		}
 
-		config, err = mergeConfigs(config, mergeConfig)
+		config, err = internal.MergeConfigs(config, mergeConfig)
 		if err != nil {
 			return fmt.Errorf("failed to merge generated config with existing config: %w", err)
 		}
@@ -211,7 +212,7 @@ func (af *appFlags) run(name string) error {
 
 	// Write the config to the output file
 	fmt.Fprintf(dest, header, name)
-	if err := writeYamlToWriter(dest, config); err != nil {
+	if err := internal.WriteYamlToWriter(dest, config); err != nil {
 		if abortErr := af.OutputWriter.Abort(); abortErr != nil {
 			slog.Warn("failed to abort", "error", abortErr)
 		}

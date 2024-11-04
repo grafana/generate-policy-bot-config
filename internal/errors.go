@@ -1,15 +1,15 @@
-package main
+package internal
 
 import (
 	"fmt"
 	"strings"
 )
 
-// errNoWorkflows is returned when no workflows are found in the specified directory.
-type errNoWorkflows struct {
+// ErrNoWorkflows is returned when no workflows are found in the specified directory.
+type ErrNoWorkflows struct {
 }
 
-func (e errNoWorkflows) Error() string {
+func (e ErrNoWorkflows) Error() string {
 	return "no workflows found in directory"
 }
 
@@ -22,18 +22,18 @@ func (e errWorkflowParse) Error() string {
 	return fmt.Sprintf("failed to parse workflow: %v", e.Err)
 }
 
-// errInvalidWorkflow is returned when a workflow file cannot be parsed or is invalid.
+// ErrInvalidWorkflow is returned when a workflow file cannot be parsed or is invalid.
 // It will usually wrap an ErrWorkflowParse or ErrUnexpectedType.
-type errInvalidWorkflow struct {
+type ErrInvalidWorkflow struct {
 	Path string
 	Err  error
 }
 
-func (e errInvalidWorkflow) Error() string {
+func (e ErrInvalidWorkflow) Error() string {
 	return fmt.Sprintf("invalid workflow file %s: %s", e.Path, e.Err)
 }
 
-func (e errInvalidWorkflow) Unwrap() error {
+func (e ErrInvalidWorkflow) Unwrap() error {
 	return e.Err
 }
 
@@ -78,24 +78,24 @@ func (e errMergeDuplicateApprovalRules) Error() string {
 	return fmt.Sprintf("tried to merge two rules with the same name `%s` - this is not allowed", duplicateRules)
 }
 
-// errInvalidPolicyBotConfig is returned when a policy bot config cannot be
+// ErrInvalidPolicyBotConfig is returned when a policy bot config cannot be
 // unmarshaled.
-type errInvalidPolicyBotConfig struct {
+type ErrInvalidPolicyBotConfig struct {
 	Err error
 }
 
-func (e errInvalidPolicyBotConfig) Error() string {
+func (e ErrInvalidPolicyBotConfig) Error() string {
 	return fmt.Sprintf("invalid config: %v", e.Err)
 }
 
-func (e errInvalidPolicyBotConfig) Unwrap() error {
+func (e ErrInvalidPolicyBotConfig) Unwrap() error {
 	return e.Err
 }
 
 // Is implements the errors.Is interface. The default implementaion of `Is`
 // compares by value, which is not that useful for us. It would only return
 // `true` when the wrapped error is exactly the same.
-func (e errInvalidPolicyBotConfig) Is(target error) bool {
-	_, ok := target.(errInvalidPolicyBotConfig)
+func (e ErrInvalidPolicyBotConfig) Is(target error) bool {
+	_, ok := target.(ErrInvalidPolicyBotConfig)
 	return ok
 }

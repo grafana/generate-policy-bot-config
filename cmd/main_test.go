@@ -2,19 +2,31 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
 
+	"github.com/grafana/generate-policy-bot-config/internal"
 	"github.com/jessevdk/go-flags"
 	"github.com/palantir/policy-bot/policy"
 	"github.com/palantir/policy-bot/policy/approval"
+	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/policy/predicate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+func mustRegexpsFromGlobs(t *testing.T, globs []string) []common.Regexp {
+	t.Helper()
+
+	result, err := internal.RegexpsFromGlobs(globs)
+	require.NoError(t, err)
+
+	return result
+}
 
 func TestParseFlags(t *testing.T) {
 	tests := []struct {
@@ -46,9 +58,11 @@ func TestParseFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			savedStdout := os.Stdout
-			_, w, _ := os.Pipe()
+			r, w, _ := os.Pipe()
 			os.Stdout = w
 			t.Cleanup(func() {
+				r.Close()
+				w.Close()
 				os.Stdout = savedStdout
 			})
 			var conf appFlags
@@ -75,11 +89,37 @@ func TestParseFlags(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			// Check if the FS is pointing to the correct directory
-			testFile := "test_file.txt"
-			_, err = conf.Args.Root.Open(testFile)
+
+			// Check if the FS is pointing to the correct directory: if we are
+			// going to look in the directory we were given.
+			f, err := conf.Args.Root.Open("test_file.txt")
 			require.NoError(t, err)
-			require.Equal(t, tt.expectedOut, conf.OutputWriter.dest)
+			require.NoError(t, f.Close())
+
+			// Now check that we're writing output to the correct place.
+			testBytes := []byte("test\n")
+			_, err = conf.OutputWriter.Write(testBytes)
+			require.NoError(t, err)
+			require.NoError(t, conf.OutputWriter.Close())
+
+			// We redirected stdout above, and we already have a reader for it
+			// in `r`. But if we're outputting to a file instead, we need to
+			// open that now.
+			if tt.expectedOut != "-" {
+				// Set `r` to a reader that reads from our expected output file
+				f, err := os.Open(tt.expectedOut)
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					require.NoError(t, f.Close())
+				})
+
+				r = f
+			}
+
+			content, err := io.ReadAll(r)
+			require.NoError(t, err)
+
+			require.Equal(t, testBytes, content)
 		})
 	}
 }
@@ -154,7 +194,7 @@ on:
 									map[string]interface{}{
 										"and": []interface{}{
 											"Workflow .github/workflows/workflow.yml succeeded or skipped",
-											defaultToApproval,
+											internal.DefaultToApproval,
 										},
 									},
 								},
@@ -173,14 +213,14 @@ on:
 						Requires: approval.Requires{
 							Conditions: predicate.Predicates{
 								HasWorkflowResult: &predicate.HasWorkflowResult{
-									Conclusions: skippedOrSuccess,
+									Conclusions: internal.SkippedOrSuccess,
 									Workflows:   []string{".github/workflows/workflow.yml"},
 								},
 							},
 						},
 					},
 					{
-						Name: defaultToApproval,
+						Name: internal.DefaultToApproval,
 					},
 				},
 			},
@@ -215,9 +255,9 @@ on:
 			outputBuffer := &bytes.Buffer{}
 			conf := appFlags{
 				Args: rootArgs{Root: rootDir{mapFS}},
-				OutputWriter: &renamingWriter{
-					writeCloserRenamerRemover: nopRenamerRemover{
-						&bytesBufferCloser{outputBuffer},
+				OutputWriter: &internal.RenamingWriter{
+					WriteCloserRenamerRemover: internal.NopRenamerRemover{
+						WriteCloser: &bytesBufferCloser{outputBuffer},
 					},
 				},
 			}
@@ -282,9 +322,9 @@ on:
 
 		conf := appFlags{
 			Args: rootArgs{Root: rootDir{mapFS}},
-			OutputWriter: &renamingWriter{
-				writeCloserRenamerRemover: nopRenamerRemover{
-					&bytesBufferCloser{buf},
+			OutputWriter: &internal.RenamingWriter{
+				WriteCloserRenamerRemover: internal.NopRenamerRemover{
+					WriteCloser: &bytesBufferCloser{buf},
 				},
 			},
 		}
@@ -314,7 +354,7 @@ on:
 	}
 	workflows, err := flags.parsePRWorkflows()
 	require.NoError(t, err)
-	return workflows.policyBotConfig()
+	return workflows.PolicyBotConfig()
 }
 
 func expectedConfig(t *testing.T) policy.Config {
@@ -328,7 +368,7 @@ func expectedConfig(t *testing.T) policy.Config {
 						map[string]interface{}{
 							"and": []interface{}{
 								"Workflow .github/workflows/workflow.yml succeeded or skipped",
-								defaultToApproval,
+								internal.DefaultToApproval,
 							},
 						},
 					},
@@ -349,13 +389,13 @@ func expectedConfig(t *testing.T) policy.Config {
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
-							Conclusions: skippedOrSuccess,
+							Conclusions: internal.SkippedOrSuccess,
 							Workflows:   []string{".github/workflows/workflow.yml"},
 						},
 					},
 				},
 			},
-			{Name: defaultToApproval},
+			{Name: internal.DefaultToApproval},
 			{Name: "custom_rule"},
 		},
 	}
@@ -364,9 +404,9 @@ func expectedConfig(t *testing.T) policy.Config {
 func testAppFlags(mapFS fstest.MapFS, outputBuffer *bytes.Buffer) appFlags {
 	return appFlags{
 		Args: rootArgs{Root: rootDir{mapFS}},
-		OutputWriter: &renamingWriter{
-			writeCloserRenamerRemover: nopRenamerRemover{
-				&bytesBufferCloser{outputBuffer},
+		OutputWriter: &internal.RenamingWriter{
+			WriteCloserRenamerRemover: internal.NopRenamerRemover{
+				WriteCloser: &bytesBufferCloser{outputBuffer},
 			},
 		},
 	}
@@ -428,7 +468,7 @@ approval_rules:
 		{
 			name:          "Merge with invalid config",
 			setupReader:   func() reader { return createReader([]byte("invalid yaml")) },
-			expectedError: errInvalidPolicyBotConfig{},
+			expectedError: internal.ErrInvalidPolicyBotConfig{},
 		},
 		{
 			name:           "No merge config (nil reader)",

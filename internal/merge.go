@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -70,17 +70,17 @@ func mergeApprovals(generatedApproval, mergeWithApproval approval.Policy) (appro
 
 			approvals, ok := generatedApproval[0].(map[string]interface{})
 			if !ok {
-				return nil, errInvalidPolicyBotConfig{Err: fmt.Errorf("generated approval is not a map")}
+				return nil, ErrInvalidPolicyBotConfig{Err: fmt.Errorf("generated approval is not a map")}
 			}
 
 			mergeWith, ok := approvals["or"]
 			if !ok {
-				return nil, errInvalidPolicyBotConfig{Err: fmt.Errorf("the generated approval does not have an `or` field")}
+				return nil, ErrInvalidPolicyBotConfig{Err: fmt.Errorf("the generated approval does not have an `or` field")}
 			}
 
 			mergeWithI, ok := mergeWith.([]interface{})
 			if !ok {
-				return nil, errInvalidPolicyBotConfig{Err: fmt.Errorf("generated approval's `or` field is not a slice")}
+				return nil, ErrInvalidPolicyBotConfig{Err: fmt.Errorf("generated approval's `or` field is not a slice")}
 			}
 
 			mergeWith = append(mergeWithI, orSlice[1:]...)
@@ -92,9 +92,9 @@ func mergeApprovals(generatedApproval, mergeWithApproval approval.Policy) (appro
 	return generatedApproval, nil
 }
 
-// mergeConfigs combines a generated config with an existing config using deep merging.
+// MergeConfigs combines a generated config with an existing config using deep merging.
 // The existing config takes precedence over the generated config.
-func mergeConfigs(generated, mergeWith policy.Config) (policy.Config, error) {
+func MergeConfigs(generated, mergeWith policy.Config) (policy.Config, error) {
 	slog.Debug("merging user-provided policy with generated policy")
 
 	// Don't know how to sensibly merge disapprovals (and anyway, we don't

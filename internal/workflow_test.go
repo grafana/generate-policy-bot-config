@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"testing"
@@ -11,13 +11,13 @@ func TestGitHubWorkflowUnmarshalYAML(t *testing.T) {
 	testCases := []struct {
 		name        string
 		yamlContent string
-		expected    gitHubWorkflow
+		expected    GitHubWorkflow
 		expectError bool
 	}{
 		{
 			name:        "on as string",
 			yamlContent: "on: pull_request",
-			expected: gitHubWorkflow{
+			expected: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{},
 				},
@@ -26,7 +26,7 @@ func TestGitHubWorkflowUnmarshalYAML(t *testing.T) {
 		{
 			name:        "on as list",
 			yamlContent: "on: [pull_request, pull_request_target]",
-			expected: gitHubWorkflow{
+			expected: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest:       &gitHubWorkflowOnPullRequest{},
 					PullRequestTarget: &gitHubWorkflowOnPullRequest{},
@@ -43,7 +43,7 @@ on:
   pull_request_target:
     paths-ignore: [docs/**]
 `,
-			expected: gitHubWorkflow{
+			expected: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Branches: []string{"main"},
@@ -68,7 +68,7 @@ on:
     paths: [config/**]
     paths-ignore: [README.md]
 `,
-			expected: gitHubWorkflow{
+			expected: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Branches:    []string{"main", "develop"},
@@ -91,18 +91,18 @@ on:
 		{
 			name:        "empty on field",
 			yamlContent: "on: {}",
-			expected:    gitHubWorkflow{},
+			expected:    GitHubWorkflow{},
 		},
 		{
 			name:        "on with unsupported event",
 			yamlContent: "on: push",
-			expected:    gitHubWorkflow{},
+			expected:    GitHubWorkflow{},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var wf gitHubWorkflow
+			var wf GitHubWorkflow
 			err := yaml.Unmarshal([]byte(tc.yamlContent), &wf)
 
 			if tc.expectError {
@@ -119,12 +119,12 @@ on:
 func TestGitHubWorkflowIsPullRequestWorkflow(t *testing.T) {
 	testCases := []struct {
 		name     string
-		workflow gitHubWorkflow
+		workflow GitHubWorkflow
 		ok       bool
 	}{
 		{
 			name: "pull_request only",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{},
 				},
@@ -133,7 +133,7 @@ func TestGitHubWorkflowIsPullRequestWorkflow(t *testing.T) {
 		},
 		{
 			name: "pull_request_target only",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequestTarget: &gitHubWorkflowOnPullRequest{},
 				},
@@ -142,7 +142,7 @@ func TestGitHubWorkflowIsPullRequestWorkflow(t *testing.T) {
 		},
 		{
 			name: "both pull_request and pull_request_target",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest:       &gitHubWorkflowOnPullRequest{},
 					PullRequestTarget: &gitHubWorkflowOnPullRequest{},
@@ -152,21 +152,21 @@ func TestGitHubWorkflowIsPullRequestWorkflow(t *testing.T) {
 		},
 		{
 			name:     "neither pull_request nor pull_request_target",
-			workflow: gitHubWorkflow{},
+			workflow: GitHubWorkflow{},
 			ok:       false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := tc.workflow.isPullRequestWorkflow()
+			result := tc.workflow.IsPullRequestWorkflow()
 			require.Equal(t, tc.ok, result)
 		})
 	}
 }
 
 func TestGitHubWorkflowPaths(t *testing.T) {
-	workflow := gitHubWorkflow{
+	workflow := GitHubWorkflow{
 		On: githubWorkflowHeader{
 			PullRequest: &gitHubWorkflowOnPullRequest{
 				Paths: []string{"src/**", "tests/**"},
@@ -183,7 +183,7 @@ func TestGitHubWorkflowPaths(t *testing.T) {
 }
 
 func TestGitHubWorkflowIgnorePaths(t *testing.T) {
-	workflow := gitHubWorkflow{
+	workflow := GitHubWorkflow{
 		On: githubWorkflowHeader{
 			PullRequest: &gitHubWorkflowOnPullRequest{
 				PathsIgnore: []string{"vendor/**", "*.md"},
@@ -209,12 +209,12 @@ on:
 `))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		var wf gitHubWorkflow
+		var wf GitHubWorkflow
 		// We're not testing yaml.Unmarshal itself, so we can ignore its errors
 		_ = yaml.Unmarshal(data, &wf)
 
 		// Check that no matter what input we get, isPullRequestWorkflow doesn't panic
-		_ = wf.isPullRequestWorkflow()
+		_ = wf.IsPullRequestWorkflow()
 
 		// Check that paths() and ignorePaths() don't panic
 		_ = wf.paths()
@@ -225,12 +225,12 @@ on:
 func TestTypes(t *testing.T) {
 	testCases := []struct {
 		name     string
-		workflow gitHubWorkflow
+		workflow GitHubWorkflow
 		expected []string
 	}{
 		{
 			name: "pull_request only",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{},
 				},
@@ -239,7 +239,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			name: "pull_request_target only",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequestTarget: &gitHubWorkflowOnPullRequest{},
 				},
@@ -248,7 +248,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			name: "both pull_request and pull_request_target",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest:       &gitHubWorkflowOnPullRequest{},
 					PullRequestTarget: &gitHubWorkflowOnPullRequest{},
@@ -258,12 +258,12 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			name:     "neither pull_request nor pull_request_target",
-			workflow: gitHubWorkflow{},
+			workflow: GitHubWorkflow{},
 			expected: nil,
 		},
 		{
 			name: "pull_request with types",
-			workflow: gitHubWorkflow{
+			workflow: GitHubWorkflow{
 				On: githubWorkflowHeader{
 					PullRequest: &gitHubWorkflowOnPullRequest{
 						Types: []string{"opened", "reopened"},

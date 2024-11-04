@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -30,14 +30,14 @@ type githubWorkflowHeader struct {
 	PullRequestTarget *gitHubWorkflowOnPullRequest `yaml:"pull_request_target"`
 }
 
-// gitHubWorkflow represents a GitHub Actions workflow file.
-type gitHubWorkflow struct {
+// GitHubWorkflow represents a GitHub Actions workflow file.
+type GitHubWorkflow struct {
 	On githubWorkflowHeader
 }
 
-// gitHubWorkflowCollection represents a collection of GitHub Actions workflows.
+// GitHubWorkflowCollection represents a collection of GitHub Actions workflows.
 // It is a map where the key is the workflow's path.
-type gitHubWorkflowCollection map[string]gitHubWorkflow
+type GitHubWorkflowCollection map[string]GitHubWorkflow
 
 // UnmarshalYAML implements custom unmarshaling for githubWorkflowHeader. This
 // is needed because the `on` field can be a string, list or map.
@@ -107,14 +107,14 @@ func (wfh *githubWorkflowHeader) unmarshalMap(node *yaml.Node) error {
 	return nil
 }
 
-// isPullRequestWorkflow checks if the workflow is triggered by pull requests.
-func (wf gitHubWorkflow) isPullRequestWorkflow() bool {
+// IsPullRequestWorkflow checks if the workflow is triggered by pull requests.
+func (wf GitHubWorkflow) IsPullRequestWorkflow() bool {
 	return wf.On.PullRequest != nil || wf.On.PullRequestTarget != nil
 }
 
 // branches returns the combined branches from PullRequest and PullRequestTarget.
 // These are the branches that might trigger a run on a pull request.
-func (wf gitHubWorkflow) branches() []string {
+func (wf GitHubWorkflow) branches() []string {
 	var branches []string
 	if wf.On.PullRequest != nil {
 		branches = append(branches, wf.On.PullRequest.Branches...)
@@ -127,7 +127,7 @@ func (wf gitHubWorkflow) branches() []string {
 
 // paths returns the combined paths from PullRequest and PullRequestTarget.
 // These are the paths that might trigger a run on a pull request.
-func (wf gitHubWorkflow) paths() []string {
+func (wf GitHubWorkflow) paths() []string {
 	var paths []string
 	if wf.On.PullRequest != nil {
 		paths = append(paths, wf.On.PullRequest.Paths...)
@@ -141,7 +141,7 @@ func (wf gitHubWorkflow) paths() []string {
 // ignorePaths returns the combined ignore paths from PullRequest and
 // PullRequestTarget. These are the paths that should be ignored when
 // determining if a run should be triggered on a pull request.
-func (wf gitHubWorkflow) ignorePaths() []string {
+func (wf GitHubWorkflow) ignorePaths() []string {
 	var ignorePaths []string
 	if wf.On.PullRequest != nil {
 		ignorePaths = append(ignorePaths, wf.On.PullRequest.PathsIgnore...)
@@ -152,7 +152,7 @@ func (wf gitHubWorkflow) ignorePaths() []string {
 	return ignorePaths
 }
 
-func (wf gitHubWorkflow) types() []string {
+func (wf GitHubWorkflow) types() []string {
 	if wf.On.PullRequest == nil && wf.On.PullRequestTarget == nil {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (wf gitHubWorkflow) types() []string {
 	return types
 }
 
-func (wf gitHubWorkflow) runsOnSynchronize() bool {
+func (wf GitHubWorkflow) RunsOnSynchronize() bool {
 	types := wf.types()
 
 	return slices.Contains(types, "synchronize")
