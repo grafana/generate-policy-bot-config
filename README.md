@@ -20,6 +20,26 @@ organisation._
 
 Generate a configuration file like this:
 
+### Running from a Docker image
+
+We push a Docker image to the GitHub Container Registry:
+
+```bash
+docker run --rm \
+  --volume $(pwd):/work \
+  --workdir /work \
+  ghcr.io/grafana/generate-policy-bot-config:latest \
+  --output /work/.policy.yml \
+  --log-level=debug \
+  --merge-with=/work/policy.yml \
+  .
+```
+
+Semver-tagged images are also available, as is `main` for the latest commit on
+the `main` branch.
+
+### Running from source
+
 ```bash
 go run . --output ../../.policy.yml --log-level=debug --merge-with=policy.yml
 ```
