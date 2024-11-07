@@ -8,7 +8,6 @@ policy:
             - Workflow .github/workflows/lint.yml succeeded or skipped
             - default to approval
         - override policies
-    - policy bot config is valid when modified
 approval_rules:
   - name: Workflow .github/workflows/build.yml succeeded or skipped
     requires:
