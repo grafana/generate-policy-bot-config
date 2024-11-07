@@ -1,4 +1,4 @@
-# `generate-policy-bot.yml`
+# `generate-policy-bot-config`
 
 This script generates the [Policy Bot][policy-bot] configuration file.
 
