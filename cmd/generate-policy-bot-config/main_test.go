@@ -401,7 +401,7 @@ func expectedConfig(t *testing.T) policy.Config {
 	}
 }
 
-func testAppFlags(mapFS fstest.MapFS, outputBuffer *bytes.Buffer) appFlags {
+func testAppFlags(mapFS fstest.MapFS, outputBuffer *bytes.Buffer, mergeReader reader) appFlags {
 	return appFlags{
 		Args: rootArgs{Root: rootDir{mapFS}},
 		OutputWriter: &internal.RenamingWriter{
@@ -409,6 +409,7 @@ func testAppFlags(mapFS fstest.MapFS, outputBuffer *bytes.Buffer) appFlags {
 				WriteCloser: &bytesBufferCloser{outputBuffer},
 			},
 		},
+		MergeConfig: mergeReader,
 	}
 }
 
@@ -437,7 +438,7 @@ approval_rules:
 
 	// Helper function to create a config reader
 	createReader := func(data []byte) reader {
-		return reader{bytes.NewReader(data)}
+		return reader{Reader: bytes.NewReader(data), filename: "merge.yml"}
 	}
 
 	// Helper function to create a fake stdin reader
@@ -445,29 +446,29 @@ approval_rules:
 		r, w, _ := os.Pipe()
 		_, _ = w.Write(data)
 		w.Close()
-		return reader{r}
+		return reader{Reader: r}
 	}
 
 	// Test cases
 	tests := []struct {
 		name           string
-		setupReader    func() reader
+		mergeReader    reader
 		expectedConfig policy.Config
 		expectedError  error
 	}{
 		{
 			name:           "Merge with custom config",
-			setupReader:    func() reader { return createReader(mergeConfigBytes) },
+			mergeReader:    createReader(mergeConfigBytes),
 			expectedConfig: expectedConfig,
 		},
 		{
 			name:           "Merge with fake stdin",
-			setupReader:    func() reader { return createFakeStdinReader(mergeConfigBytes) },
+			mergeReader:    createFakeStdinReader(mergeConfigBytes),
 			expectedConfig: expectedConfig,
 		},
 		{
 			name:          "Merge with invalid config",
-			setupReader:   func() reader { return createReader([]byte("invalid yaml")) },
+			mergeReader:   createReader([]byte("invalid yaml")),
 			expectedError: internal.ErrInvalidPolicyBotConfig{},
 		},
 		{
@@ -479,11 +480,7 @@ approval_rules:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outputBuffer := &bytes.Buffer{}
-			conf := testAppFlags(mapFS, outputBuffer)
-
-			if tt.setupReader != nil {
-				conf.MergeConfig = tt.setupReader()
-			}
+			conf := testAppFlags(mapFS, outputBuffer, tt.mergeReader)
 
 			err := conf.run("test-command")
 
@@ -493,6 +490,12 @@ approval_rules:
 			}
 
 			require.NoError(t, err)
+
+			if tt.mergeReader.filename != "" {
+				require.Contains(t, outputBuffer.String(), "merge.yml")
+			} else {
+				require.NotContains(t, outputBuffer.String(), "merge.yml")
+			}
 
 			var resultConfig policy.Config
 			err = yaml.Unmarshal(outputBuffer.Bytes(), &resultConfig)

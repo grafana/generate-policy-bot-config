@@ -9,7 +9,11 @@ check-policy.yml:
 		( echo "No drift detected: .policy.yml is up-to-date." >&2; exit 0 ) || \
 		( echo "Drift detected: .policy.yml is out-of-date. Run \`make .policy.yml\` to update it, and then commit the result." >&2; exit 1 )
 
-.policy.yml: policy.yml $(GO_FILES)
-	go run cmd/main.go --merge-with=policy.yml --log-level=debug $(MAKEFILE_DIR)
+.policy.yml: Makefile policy.yml $(GO_FILES)
+	go run \
+	github.com/grafana/generate-policy-bot-config/cmd/generate-policy-bot-config \
+		--merge-with=policy.yml \
+		--log-level=debug \
+		$(MAKEFILE_DIR)
 
 all: .policy.yml
