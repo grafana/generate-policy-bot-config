@@ -38,6 +38,29 @@ docker run --rm \
 Semver-tagged images are also available, as is `main` for the latest commit on
 the `main` branch.
 
+These docker images are attested using [GitHub Artifact Attestations][attest].
+You can verify our container images by using the `gh` CLI:
+
+```console
+$ gh attestation verify --repo grafana/generate-policy-bot-config oci://ghcr.io/grafana/generate-policy-bot-config:<tag>
+Loaded digest sha256:... for oci://ghcr.io/grafana/generate-policy-bot-config:<sometag>
+Loaded 3 attestations from GitHub API
+✓ Verification succeeded!
+
+sha256:<sometag> was attested by:
+REPO                                PREDICATE_TYPE                  WORKFLOW
+grafana/generate-policy-bot-config  https://slsa.dev/provenance/v1  .github/workflows/build.yml@<somref>
+```
+
+Attestations can also be viewed on the [attestation page] of this repository.
+
+What this lets you do is trace a container image back to a build in this
+repository. You'll still need to verify the build steps that were used to build
+the image to ensure that the image is safe to use.
+
+[attest]: https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+[attestation page]: https://github.com/grafana/generate-policy-bot-config/attestations
+
 ### Running from source
 
 ```bash

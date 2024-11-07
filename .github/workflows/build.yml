@@ -23,11 +23,27 @@ on:
       - Dockerfile
       - .github/workflows/build.yml
 
+  release:
+    types:
+      - created
+
   merge_group:
 
 jobs:
   main:
+    permissions:
+      attestations: write # for submitting SBOM and provenance attestations
+      contents: write # for dependency submission API
+      id-token: write # needed to sign SBOM and provenance attestations
+      packages: write
+
     runs-on: ubuntu-latest
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE: grafana/generate-policy-bot-config
+      PUSH_IMAGE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || '' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -38,7 +54,7 @@ jobs:
       - name: Log into GHCR
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
@@ -46,18 +62,81 @@ jobs:
         id: calculate-metadata
         uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
         with:
-          images: ghcr.io/grafana/generate-policy-bot-config
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
           tags: |
             # tag with branch name for `main`
             type=ref,event=branch,enable={{is_default_branch}}
             # tag with semver, and `latest`
             type=ref,event=tag
+            # tag with pr-<number>-<sha>
+            type=ref,suffix=-{{sha}},event=pr
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           labels: ${{ steps.calculate-metadata.outputs.labels }}
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          sbom: true
+          provenance: mode=max
+          push: ${{ env.PUSH_IMAGE != '' && env.PUSH_IMAGE || 'false' }}
+          # Doesn't generate proper SBOMs; using syft directly lower down
+          sbom: false
           tags: ${{ steps.calculate-metadata.outputs.tags }}
+
+      - name: Extract platform-specific digests
+        if: env.PUSH_IMAGE
+        id: platform-digests
+        run: |
+          REGISTRY_REF="${{ steps.calculate-metadata.outputs.tags }}"
+          BASE_REF="${REGISTRY_REF%%:*}"
+
+          # Get digests for each platform
+          MANIFEST_JSON="$(docker buildx imagetools inspect "${REGISTRY_REF}" --format '{{json .}}')"
+
+          # Create fully qualified references and extract digests
+          for arch in amd64 arm64; do
+            ARCH_REF="$(jq -r ".manifest.manifests[] | select(.platform.architecture == \"${arch}\").digest" <<< "${MANIFEST_JSON}")"
+            echo "${arch}-ref=${BASE_REF}@${ARCH_REF}" | tee -a "${GITHUB_OUTPUT}"
+          done
+
+      - name: Generate SBOM (amd64)
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb # v0.17.7
+        with:
+          dependency-snapshot: true
+          format: spdx-json
+          image: ${{ steps.platform-digests.outputs.amd64-ref }}
+          output-file: ${{ runner.temp }}/amd64.spdx.json
+
+      - name: Attest SBOM (amd64)
+        if: env.PUSH_IMAGE
+        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/amd64.spdx.json
+          push-to-registry: true
+
+      - name: Generate SBOM (arm64)
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb # v0.17.7
+        with:
+          dependency-snapshot: true
+          format: spdx-json
+          image: ${{ steps.platform-digests.outputs.arm64-ref }}
+          output-file: ${{ runner.temp }}/arm64.spdx.json
+
+      - name: Attest SBOM (arm64)
+        if: env.PUSH_IMAGE
+        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/arm64.spdx.json
+          push-to-registry: true
+
+      - name: Generate build provenance attestation
+        if: env.PUSH_IMAGE
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
