@@ -5,7 +5,6 @@ policy:
     - or:
         - MERGE_WITH_GENERATED
         - override policies
-    - policy bot config is valid when modified
 
 approval_rules:
   - name: override policies
