@@ -1,4 +1,7 @@
-FROM golang:1.23.2-alpine3.20 AS go-builder
+FROM --platform=${BUILDPLATFORM} golang:1.23.2-alpine3.20 AS go-builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /usr/src/generate-policy-bot-config
 
@@ -8,7 +11,7 @@ RUN go mod download && go mod verify
 
 COPY . .
 
-RUN go build -v -o generate-policy-bot-config cmd/main.go
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o generate-policy-bot-config cmd/main.go
 
 FROM scratch
 
