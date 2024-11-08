@@ -14,6 +14,14 @@ policy:
         - override policies
 approval_rules:
   - name: Workflow .github/workflows/build.yml succeeded or skipped
+    if:
+      changed_files:
+        paths:
+          - ^go\.mod$
+          - ^go\.sum$
+          - ^(?:(?:[^/]*(?:/|$))*)(?:[^/]*)\.go$
+          - ^Dockerfile$
+          - ^\.github\/workflows\/build\.yml$
     requires:
       conditions:
         has_workflow_result:
