@@ -12,6 +12,12 @@ on:
       - opened
       - ready_for_review
       - synchronize
+    paths:
+      - go.mod
+      - go.sum
+      - "**/*.go"
+      - Dockerfile
+      - .github/workflows/build.yml
 
   push:
     branches:
