@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/grafana/generate-policy-bot-config/compare/v0.1.0...v0.1.1) (2024-11-08)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** push from release event too and handle multiple tags ([1cbca2c](https://github.com/grafana/generate-policy-bot-config/commit/1cbca2cc6b957de6e6cec34ab1349165ff1c127b))
+
 ## 0.1.0 (2024-11-08)
 
 
