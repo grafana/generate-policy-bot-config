@@ -48,7 +48,7 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE: grafana/generate-policy-bot-config
-      PUSH_IMAGE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || '' }}
+      PUSH_IMAGE: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) || '' }}
 
     steps:
       - name: Checkout
@@ -92,8 +92,12 @@ jobs:
       - name: Extract platform-specific digests
         if: env.PUSH_IMAGE
         id: platform-digests
+        shell: bash
         run: |
-          REGISTRY_REF="${{ steps.calculate-metadata.outputs.tags }}"
+          declare -a TAGS
+          TAGS=(${{ steps.calculate-metadata.outputs.tags }})
+
+          REGISTRY_REF="${TAGS[0]}"
           BASE_REF="${REGISTRY_REF%%:*}"
 
           # Get digests for each platform

@@ -3,6 +3,10 @@ on:
     branches:
       - main
 
+  release:
+    types:
+      - published
+
 permissions:
   contents: write
   pull-requests: write
