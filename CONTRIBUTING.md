@@ -42,7 +42,8 @@ We use [`release-please`][release-please] to create releases. This will maintain
 a draft pull request with the changes needed to bump the version and update the
 changelog, updated with the changes since the last release.
 
-Releasing should be as simple as merging that pull request. Check that a GitHub
+Releasing should be as simple as undrafting and merging that pull request, then
+double-checking the created release and publishing it. Check that a GitHub
 release, a tag, and the Docker releases were created.
 
 ### Use conventional commit messages
