@@ -7,7 +7,7 @@ require (
 	github.com/lmittmann/tint v1.0.5
 	github.com/palantir/policy-bot v1.35.0
 	github.com/redmatter/go-globre v0.0.0-20190402065555-2f9fff18bc95
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/willabides/actionslog v0.5.1
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/term v0.26.0
