@@ -119,7 +119,7 @@ jobs:
 
       - name: Attest SBOM (amd64)
         if: env.PUSH_IMAGE
-        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+        uses: actions/attest-sbom@34581d8068ef8a325425f122523e4bb9d08932f3 # v2.0.1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -136,7 +136,7 @@ jobs:
 
       - name: Attest SBOM (arm64)
         if: env.PUSH_IMAGE
-        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+        uses: actions/attest-sbom@34581d8068ef8a325425f122523e4bb9d08932f3 # v2.0.1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
