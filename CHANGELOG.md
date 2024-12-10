@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.2](https://github.com/grafana/generate-policy-bot-config/compare/v0.1.1...v0.1.2) (2024-12-10)
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** bump actions/attest-build-provenance from 1.4.4 to 2.0.1 ([72a49ab](https://github.com/grafana/generate-policy-bot-config/commit/72a49abf4b81fc4feff4a43f37acc02dedd91ddf))
+* **deps:** bump actions/attest-sbom from 1.4.1 to 2.0.1 ([e7ebded](https://github.com/grafana/generate-policy-bot-config/commit/e7ebdedcbeebef474718ab3083b1ee715db41408))
+* **deps:** bump anchore/sbom-action from 0.17.7 to 0.17.8 ([#28](https://github.com/grafana/generate-policy-bot-config/issues/28)) ([8b1fb8b](https://github.com/grafana/generate-policy-bot-config/commit/8b1fb8b2f70ae65af11e73d341d194b4fc91b8ea))
+* **deps:** bump docker/build-push-action from 6.9.0 to 6.10.0 ([b70678d](https://github.com/grafana/generate-policy-bot-config/commit/b70678d2ff76a16f4394d2ed6432a67895703a10))
+* **deps:** bump docker/metadata-action from 5.5.1 to 5.6.1 ([#29](https://github.com/grafana/generate-policy-bot-config/issues/29)) ([3b47b75](https://github.com/grafana/generate-policy-bot-config/commit/3b47b756713b94f1b179c1fd1512d4bb683ad8f2))
+* **deps:** bump github.com/stretchr/testify from 1.9.0 to 1.10.0 ([#30](https://github.com/grafana/generate-policy-bot-config/issues/30)) ([c86ad90](https://github.com/grafana/generate-policy-bot-config/commit/c86ad90958f467334c69f738c011106bf763d69d))
+* **deps:** bump golang from 1.23.3-alpine3.20 to 1.23.4-alpine3.20 ([030f356](https://github.com/grafana/generate-policy-bot-config/commit/030f3564ec1e9e09ced38af6e2e72605f55a0d6c))
+* **deps:** bump golang.org/x/term from 0.25.0 to 0.26.0 ([67c5a39](https://github.com/grafana/generate-policy-bot-config/commit/67c5a3905d538fc59e132f4bc611a1998a772675))
+* **deps:** bump golang.org/x/term from 0.26.0 to 0.27.0 ([54e7af7](https://github.com/grafana/generate-policy-bot-config/commit/54e7af740fef5e42e709b395aa13f0fab3e61850))
+
 ## [0.1.1](https://github.com/grafana/generate-policy-bot-config/compare/v0.1.0...v0.1.1) (2024-11-08)
 
 
