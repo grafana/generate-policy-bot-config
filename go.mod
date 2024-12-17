@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/lmittmann/tint v1.0.5
+	github.com/lmittmann/tint v1.0.6
 	github.com/palantir/policy-bot v1.35.0
 	github.com/redmatter/go-globre v0.0.0-20190402065555-2f9fff18bc95
 	github.com/stretchr/testify v1.10.0
