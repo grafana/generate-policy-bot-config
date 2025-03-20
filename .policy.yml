@@ -22,6 +22,9 @@ approval_rules:
           - ^(?:(?:[^/]*(?:/|$))*)(?:[^/]*)\.go$
           - ^Dockerfile$
           - ^\.github\/workflows\/build\.yml$
+      file_not_deleted:
+        paths:
+          - ^\.github\/workflows\/build\.yml$
     requires:
       conditions:
         has_workflow_result:
@@ -31,6 +34,10 @@ approval_rules:
           workflows:
             - .github/workflows/build.yml
   - name: Workflow .github/workflows/lint.yml succeeded or skipped
+    if:
+      file_not_deleted:
+        paths:
+          - ^\.github\/workflows\/lint\.yml$
     requires:
       conditions:
         has_workflow_result:

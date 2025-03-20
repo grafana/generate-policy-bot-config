@@ -209,6 +209,9 @@ on:
 							ChangedFiles: &predicate.ChangedFiles{
 								Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
 							},
+							FileNotDeleted: &predicate.FileNotDeleted{
+								Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/workflow.yml"}),
+							},
 						},
 						Requires: approval.Requires{
 							Conditions: predicate.Predicates{
@@ -384,6 +387,9 @@ func expectedConfig(t *testing.T) policy.Config {
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
 						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
+					},
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/workflow.yml"}),
 					},
 				},
 				Requires: approval.Requires{
