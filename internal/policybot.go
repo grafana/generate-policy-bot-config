@@ -115,6 +115,15 @@ func makeApprovalRule(path string, wf GitHubWorkflow) (*approval.Rule, error) {
 		}
 	}
 
+	regexPath, err := RegexpsFromGlobs([]string{path})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't convert path to regex: %w", err)
+	}
+
+	preds.FileNotDeleted = &predicate.FileNotDeleted{
+		Paths: regexPath,
+	}
+
 	requires := approval.Requires{
 		Conditions: predicate.Predicates{
 			HasWorkflowResult: &predicate.HasWorkflowResult{
