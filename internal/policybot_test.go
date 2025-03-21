@@ -104,6 +104,9 @@ func TestMakeApprovalRule(t *testing.T) {
 						Paths:       mustRegexpsFromGlobs(t, []string{"src/**"}),
 						IgnorePaths: mustRegexpsFromGlobs(t, []string{"docs/**"}),
 					},
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
+					},
 				},
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
@@ -125,6 +128,11 @@ func TestMakeApprovalRule(t *testing.T) {
 			},
 			expected: &approval.Rule{
 				Name: "Workflow .github/workflows/build.yml succeeded or skipped",
+				Predicates: predicate.Predicates{
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/build.yml"}),
+					},
+				},
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
@@ -150,6 +158,9 @@ func TestMakeApprovalRule(t *testing.T) {
 				Predicates: predicate.Predicates{
 					TargetsBranch: &predicate.TargetsBranch{
 						Pattern: mustRegexp(t, "(^main$|^develop$)"),
+					},
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
 					},
 				},
 				Requires: approval.Requires{
@@ -183,6 +194,9 @@ func TestMakeApprovalRule(t *testing.T) {
 					},
 					TargetsBranch: &predicate.TargetsBranch{
 						Pattern: mustRegexp(t, "(^main$|^develop$)"),
+					},
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
 					},
 				},
 				Requires: approval.Requires{
@@ -283,6 +297,11 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 		ApprovalRules: []*approval.Rule{
 			{
 				Name: "Workflow .github/workflows/build.yml succeeded or skipped",
+				Predicates: predicate.Predicates{
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/build.yml"}),
+					},
+				},
 				Requires: approval.Requires{
 					Conditions: predicate.Predicates{
 						HasWorkflowResult: &predicate.HasWorkflowResult{
@@ -297,6 +316,9 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
 						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
+					},
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
 					},
 				},
 				Requires: approval.Requires{
