@@ -95,13 +95,15 @@ jobs:
         if: env.PUSH_IMAGE
         id: platform-digests
         shell: bash
+        env:
+          TAGS: "${{ steps.calculate-metadata.outputs.tags }}"
         run: |
           declare -a TAGS
-          TAGS=(${{ steps.calculate-metadata.outputs.tags }})
+          TAGS=($TAGS)
 
           # Sanitize refs
-          REGISTRY_REF="$(echo "${TAGS[0]}" | sed 's/[^a-zA-Z0-9._\/:-]//g')"
-          BASE_REF="$(echo "${REGISTRY_REF%%:*}" | sed 's/[^a-zA-Z0-9._\/-]//g')"
+          REGISTRY_REF="${TAGS[0]}"
+          BASE_REF="${REGISTRY_REF%%:*}"
 
           # Get digests for each platform
           MANIFEST_JSON="$(docker buildx imagetools inspect "${REGISTRY_REF}" --format '{{json .}}')"
