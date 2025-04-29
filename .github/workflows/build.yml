@@ -53,6 +53,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Set Docker Buildx up
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
@@ -93,10 +95,13 @@ jobs:
         if: env.PUSH_IMAGE
         id: platform-digests
         shell: bash
+        env:
+          TAGS: "${{ steps.calculate-metadata.outputs.tags }}"
         run: |
           declare -a TAGS
-          TAGS=(${{ steps.calculate-metadata.outputs.tags }})
+          TAGS=($TAGS)
 
+          # Sanitize refs
           REGISTRY_REF="${TAGS[0]}"
           BASE_REF="${REGISTRY_REF%%:*}"
 
