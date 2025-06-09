@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/lmittmann/tint v1.1.1
+	github.com/lmittmann/tint v1.1.2
 	github.com/palantir/policy-bot v1.37.0
 	github.com/redmatter/go-globre v1.2.0
 	github.com/stretchr/testify v1.10.0
