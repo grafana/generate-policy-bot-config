@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.1](https://github.com/grafana/generate-policy-bot-config/compare/v0.2.0...v0.2.1) (2025-09-30)
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** bump actions/attest-build-provenance from 2.4.0 to 3.0.0 ([#115](https://github.com/grafana/generate-policy-bot-config/issues/115)) ([c0993b3](https://github.com/grafana/generate-policy-bot-config/commit/c0993b34a1cd4db8b0b99839358cbcc418dbb0e6))
+* **deps:** bump actions/attest-sbom from 2.4.0 to 3.0.0 ([#116](https://github.com/grafana/generate-policy-bot-config/issues/116)) ([576e931](https://github.com/grafana/generate-policy-bot-config/commit/576e9312ca4b83b915ac56e22874745166562cfe))
+* **deps:** bump actions/setup-go from 5.5.0 to 6.0.0 ([#114](https://github.com/grafana/generate-policy-bot-config/issues/114)) ([b0d83db](https://github.com/grafana/generate-policy-bot-config/commit/b0d83db755e3ee2e7bda5390db16a5d33822bc26))
+* **deps:** bump anchore/sbom-action from 0.20.5 to 0.20.6 ([#118](https://github.com/grafana/generate-policy-bot-config/issues/118)) ([6e35c7e](https://github.com/grafana/generate-policy-bot-config/commit/6e35c7e8176bb4694047b32a729dad765eefad5f))
+* **deps:** bump docker/login-action from 3.5.0 to 3.6.0 ([#119](https://github.com/grafana/generate-policy-bot-config/issues/119)) ([6477320](https://github.com/grafana/generate-policy-bot-config/commit/64773203c80f035bc4be88fce74f490592f30933))
+* **deps:** bump github.com/palantir/policy-bot from 1.38.2 to 1.39.0 ([#117](https://github.com/grafana/generate-policy-bot-config/issues/117)) ([8815564](https://github.com/grafana/generate-policy-bot-config/commit/881556430110753f16171e086162d32af525eb93))
+* **deps:** bump golang.org/x/term from 0.34.0 to 0.35.0 ([#113](https://github.com/grafana/generate-policy-bot-config/issues/113)) ([d25436e](https://github.com/grafana/generate-policy-bot-config/commit/d25436e8c360af6a0d44404e9026cc9d75642d50))
+
 ## [0.2.0](https://github.com/grafana/generate-policy-bot-config/compare/v0.1.1...v0.2.0) (2025-08-28)
 
 
