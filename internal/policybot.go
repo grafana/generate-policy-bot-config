@@ -12,7 +12,7 @@ import (
 	"github.com/palantir/policy-bot/policy/approval"
 	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/policy/predicate"
-	"github.com/redmatter/go-globre"
+	"github.com/redmatter/go-globre/v2"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
