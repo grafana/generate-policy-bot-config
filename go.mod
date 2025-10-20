@@ -6,7 +6,7 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/lmittmann/tint v1.1.2
 	github.com/palantir/policy-bot v1.39.1
-	github.com/redmatter/go-globre v1.2.0
+	github.com/redmatter/go-globre/v2 v2.0.0
 	github.com/stretchr/testify v1.11.1
 	github.com/willabides/actionslog v0.5.1
 	golang.org/x/exp v0.0.0-20251017212417-90e834f514db
