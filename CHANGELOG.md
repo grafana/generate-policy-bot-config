@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.2.1](https://github.com/grafana/generate-policy-bot-config/compare/v0.2.0...v0.2.1) (2025-11-26)
+
+
+### 🐛 Bug Fixes
+
+* **deps:** update golang.org/x/exp digest to 90e834f ([#125](https://github.com/grafana/generate-policy-bot-config/issues/125)) ([f863e7c](https://github.com/grafana/generate-policy-bot-config/commit/f863e7c4921c9b060cc4c52eb25d1c428a30cc41))
+* **deps:** update golang.org/x/exp digest to a4bb9ff ([#133](https://github.com/grafana/generate-policy-bot-config/issues/133)) ([9f53cae](https://github.com/grafana/generate-policy-bot-config/commit/9f53caee41caa2b05c067eff3880742b029a0c9d))
+* **deps:** update golang.org/x/exp digest to e25ba8c ([#143](https://github.com/grafana/generate-policy-bot-config/issues/143)) ([f0a3e83](https://github.com/grafana/generate-policy-bot-config/commit/f0a3e8326b59d4d5393245d91bf7754b46a3fd9f))
+* **deps:** update module github.com/palantir/policy-bot to v1.39.2 ([#135](https://github.com/grafana/generate-policy-bot-config/issues/135)) ([ab1f4e0](https://github.com/grafana/generate-policy-bot-config/commit/ab1f4e0c46e0603ae7350fc117e904a4849da238))
+* **deps:** update module github.com/redmatter/go-globre to v2 ([#127](https://github.com/grafana/generate-policy-bot-config/issues/127)) ([b8b70a8](https://github.com/grafana/generate-policy-bot-config/commit/b8b70a8d6c0c868c50e9cce90c70a475f361f320))
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** bump actions/attest-build-provenance from 2.4.0 to 3.0.0 ([#115](https://github.com/grafana/generate-policy-bot-config/issues/115)) ([c0993b3](https://github.com/grafana/generate-policy-bot-config/commit/c0993b34a1cd4db8b0b99839358cbcc418dbb0e6))
+* **deps:** bump actions/attest-sbom from 2.4.0 to 3.0.0 ([#116](https://github.com/grafana/generate-policy-bot-config/issues/116)) ([576e931](https://github.com/grafana/generate-policy-bot-config/commit/576e9312ca4b83b915ac56e22874745166562cfe))
+* **deps:** bump actions/setup-go from 5.5.0 to 6.0.0 ([#114](https://github.com/grafana/generate-policy-bot-config/issues/114)) ([b0d83db](https://github.com/grafana/generate-policy-bot-config/commit/b0d83db755e3ee2e7bda5390db16a5d33822bc26))
+* **deps:** bump anchore/sbom-action from 0.20.5 to 0.20.6 ([#118](https://github.com/grafana/generate-policy-bot-config/issues/118)) ([6e35c7e](https://github.com/grafana/generate-policy-bot-config/commit/6e35c7e8176bb4694047b32a729dad765eefad5f))
+* **deps:** bump docker/login-action from 3.5.0 to 3.6.0 ([#119](https://github.com/grafana/generate-policy-bot-config/issues/119)) ([6477320](https://github.com/grafana/generate-policy-bot-config/commit/64773203c80f035bc4be88fce74f490592f30933))
+* **deps:** bump github.com/palantir/policy-bot from 1.38.2 to 1.39.0 ([#117](https://github.com/grafana/generate-policy-bot-config/issues/117)) ([8815564](https://github.com/grafana/generate-policy-bot-config/commit/881556430110753f16171e086162d32af525eb93))
+* **deps:** bump github.com/palantir/policy-bot from 1.39.0 to 1.39.1 ([#123](https://github.com/grafana/generate-policy-bot-config/issues/123)) ([b5c6fb6](https://github.com/grafana/generate-policy-bot-config/commit/b5c6fb6206f968185608ecaaacb1cb05a9ce4f79))
+* **deps:** bump github.com/palantir/policy-bot from 1.39.2 to 1.39.3 ([#137](https://github.com/grafana/generate-policy-bot-config/issues/137)) ([de7ba63](https://github.com/grafana/generate-policy-bot-config/commit/de7ba63f4c512f6744d4e8dea5fa9b29a9ae5a13))
+* **deps:** bump golang from 1.25.1-alpine3.22 to 1.25.2-alpine3.22 ([#120](https://github.com/grafana/generate-policy-bot-config/issues/120)) ([e943df2](https://github.com/grafana/generate-policy-bot-config/commit/e943df20e570003979532ae32fb479fd6d56bbe5))
+* **deps:** bump golang from 1.25.2-alpine3.22 to 1.25.3-alpine3.22 ([#122](https://github.com/grafana/generate-policy-bot-config/issues/122)) ([2a55901](https://github.com/grafana/generate-policy-bot-config/commit/2a5590114d024c3bac97df730a8d3d1522f1427a))
+* **deps:** bump golang from 1.25.3-alpine3.22 to 1.25.4-alpine3.22 ([#136](https://github.com/grafana/generate-policy-bot-config/issues/136)) ([316acd7](https://github.com/grafana/generate-policy-bot-config/commit/316acd734a89eaeb8c39351a246c21dee29ee793))
+* **deps:** bump golang.org/x/term from 0.34.0 to 0.35.0 ([#113](https://github.com/grafana/generate-policy-bot-config/issues/113)) ([d25436e](https://github.com/grafana/generate-policy-bot-config/commit/d25436e8c360af6a0d44404e9026cc9d75642d50))
+* **deps:** bump golang.org/x/term from 0.35.0 to 0.36.0 ([#121](https://github.com/grafana/generate-policy-bot-config/issues/121)) ([dca78ad](https://github.com/grafana/generate-policy-bot-config/commit/dca78adecf5d12f18bfa94ced8a8ef85d1682e7d))
+* **deps:** bump golang.org/x/term from 0.36.0 to 0.37.0 ([#142](https://github.com/grafana/generate-policy-bot-config/issues/142)) ([f80f5aa](https://github.com/grafana/generate-policy-bot-config/commit/f80f5aa712a3250dcf481879050021707b1980d9))
+* **deps:** bump golangci/golangci-lint-action from 8.0.0 to 9.0.0 ([#140](https://github.com/grafana/generate-policy-bot-config/issues/140)) ([b69601b](https://github.com/grafana/generate-policy-bot-config/commit/b69601b9e6313167746c63100396b245d4dc1dcd))
+* **deps:** bump grafana/shared-workflows from 1.2.0 to 1.2.1 ([#141](https://github.com/grafana/generate-policy-bot-config/issues/141)) ([ad78d4e](https://github.com/grafana/generate-policy-bot-config/commit/ad78d4ebe7a8fa182bf0697a80f0403559c9253f))
+* **deps:** pin golang docker tag to aee43c3 ([#124](https://github.com/grafana/generate-policy-bot-config/issues/124)) ([c50bb36](https://github.com/grafana/generate-policy-bot-config/commit/c50bb36c77b41f588f6726012ad00fa3c61956da))
+* **deps:** update actions/checkout action to v5.0.1 ([#144](https://github.com/grafana/generate-policy-bot-config/issues/144)) ([be82088](https://github.com/grafana/generate-policy-bot-config/commit/be820882dcdba8881808bf247633e15b42dc6d0d))
+* **deps:** update actions/checkout action to v6 ([#147](https://github.com/grafana/generate-policy-bot-config/issues/147)) ([2b66710](https://github.com/grafana/generate-policy-bot-config/commit/2b667100a8e9a16b72c64043a843ad1db60f91fc))
+* **deps:** update actions/setup-go action to v6.1.0 ([#146](https://github.com/grafana/generate-policy-bot-config/issues/146)) ([d3f9a1e](https://github.com/grafana/generate-policy-bot-config/commit/d3f9a1e75f31920f2b8bc0f15b546d049843e415))
+* **deps:** update anchore/sbom-action action to v0.20.10 ([#145](https://github.com/grafana/generate-policy-bot-config/issues/145)) ([7052b54](https://github.com/grafana/generate-policy-bot-config/commit/7052b5442e012a2e4f53e588c5ffc343b0876f00))
+* **deps:** update anchore/sbom-action action to v0.20.7 ([#129](https://github.com/grafana/generate-policy-bot-config/issues/129)) ([ec94e57](https://github.com/grafana/generate-policy-bot-config/commit/ec94e57b7ad9b41ebb95fb0be2fbee837930f384))
+* **deps:** update anchore/sbom-action action to v0.20.8 ([#130](https://github.com/grafana/generate-policy-bot-config/issues/130)) ([62da65d](https://github.com/grafana/generate-policy-bot-config/commit/62da65d67ed199b9896d30dd3be3393c4eff3dfb))
+* **deps:** update anchore/sbom-action action to v0.20.9 ([#131](https://github.com/grafana/generate-policy-bot-config/issues/131)) ([e21b25b](https://github.com/grafana/generate-policy-bot-config/commit/e21b25b3ebfc70b860c778d3677bf627751be647))
+* **deps:** update docker/metadata-action action to v5.9.0 ([#138](https://github.com/grafana/generate-policy-bot-config/issues/138)) ([bfc8917](https://github.com/grafana/generate-policy-bot-config/commit/bfc8917d54572e968cfb59b67c1db79b6d3dd752))
+* **deps:** update golangci/golangci-lint-action action to v9.1.0 ([#148](https://github.com/grafana/generate-policy-bot-config/issues/148)) ([516c0a8](https://github.com/grafana/generate-policy-bot-config/commit/516c0a8aba8ad26140540967dac7534650852319))
+* **deps:** update googleapis/release-please-action action to v4.4.0 ([#132](https://github.com/grafana/generate-policy-bot-config/issues/132)) ([7cd88ec](https://github.com/grafana/generate-policy-bot-config/commit/7cd88eca3496f03d36f3b337f986e9c5c6320bb5))
+* **deps:** update grafana/shared-workflows/lint-pr-title action to v1.2.0 ([#126](https://github.com/grafana/generate-policy-bot-config/issues/126)) ([164827c](https://github.com/grafana/generate-policy-bot-config/commit/164827ce98e3bfcac1dbc7cb2cb6afa356129c92))
+
 ## [0.2.0](https://github.com/grafana/generate-policy-bot-config/compare/v0.1.1...v0.2.0) (2025-08-28)
 
 
