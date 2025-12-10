@@ -10,6 +10,7 @@ policy:
         - and:
             - Workflow .github/workflows/build.yml succeeded or skipped
             - Workflow .github/workflows/lint.yml succeeded or skipped
+            - Workflow .github/workflows/test.yml succeeded or skipped
             - default to approval
         - override policies
 approval_rules:
@@ -46,6 +47,19 @@ approval_rules:
             - success
           workflows:
             - .github/workflows/lint.yml
+  - name: Workflow .github/workflows/test.yml succeeded or skipped
+    if:
+      file_not_deleted:
+        paths:
+          - ^\.github\/workflows\/test\.yml$
+    requires:
+      conditions:
+        has_workflow_result:
+          conclusions:
+            - skipped
+            - success
+          workflows:
+            - .github/workflows/test.yml
   - name: default to approval
   - name: override policies
     options:
