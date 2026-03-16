@@ -9,7 +9,7 @@ require (
 	github.com/redmatter/go-globre/v2 v2.0.0
 	github.com/stretchr/testify v1.11.1
 	github.com/willabides/actionslog v0.5.1
-	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
+	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90
 	golang.org/x/term v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
