@@ -10,7 +10,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/willabides/actionslog v0.5.1
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
-	golang.org/x/term v0.42.0
+	golang.org/x/term v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
