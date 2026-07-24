@@ -1,0 +1,26 @@
+name: Check for .policy.yml drift
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - ready_for_review
+      - synchronize
+  push:
+    branches:
+      - main
+
+jobs:
+  drift:
+    name: Check for drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Check for drift
+        uses: ./actions/check-for-drift
+        with:
+          input_file: .policy.yml
+          merge_with: policy.yml
