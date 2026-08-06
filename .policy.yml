@@ -19,7 +19,7 @@ approval_rules:
         paths:
           - ^go\.mod$
           - ^go\.sum$
-          - ^(?:(?:[^/]*(?:/|$))*)(?:[^/]*)\.go$
+          - ^.*\/.*\.go$
           - ^Dockerfile$
           - ^\.github\/workflows\/build\.yml$
       file_not_deleted:
@@ -48,13 +48,13 @@ approval_rules:
             - .github/workflows/lint.yml
   - name: default to approval
   - name: override policies
-    options:
-      methods:
-        comments:
-          - 'policy bot: approve'
-          - 'policy-bot: approve'
-        github_review: false
     requires:
       count: 1
       permissions:
         - write
+    options:
+      methods:
+        comments:
+          - "policy bot: approve"
+          - "policy-bot: approve"
+        github_review: false

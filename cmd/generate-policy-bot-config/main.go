@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -194,12 +195,28 @@ func (af *appFlags) abort() {
 
 // loadConfigFromReader reads a policy bot config from the given reader. This is
 // used to merge the generated config with an existing config.
-func loadConfigFromReader(r io.Reader) (policy.Config, error) {
-	var config policy.Config
-	decoder := yaml.NewDecoder(r)
-	if err := decoder.Decode(&config); err != nil {
-		return policy.Config{}, internal.ErrInvalidPolicyBotConfig{Err: err}
+//
+// The config is decoded twice. Once into policy-bot's own types, which we throw
+// away: it is there to reject a config that policy-bot couldn't load, which is
+// worth catching here rather than several steps later. And once into our own
+// type, which keeps the hand-written parts as raw YAML so that merging can't
+// change what they mean. See internal.Config.
+func loadConfigFromReader(r io.Reader) (internal.Config, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return internal.Config{}, fmt.Errorf("failed to read config: %w", err)
 	}
+
+	var validated policy.Config
+	if err := yaml.NewDecoder(bytes.NewReader(raw)).Decode(&validated); err != nil {
+		return internal.Config{}, internal.ErrInvalidPolicyBotConfig{Err: err}
+	}
+
+	var config internal.Config
+	if err := yaml.Unmarshal(raw, &config); err != nil {
+		return internal.Config{}, internal.ErrInvalidPolicyBotConfig{Err: err}
+	}
+
 	return config, nil
 }
 
@@ -215,7 +232,11 @@ func (af *appFlags) run(name string) error {
 	}
 
 	// Generate a policy bot config from them
-	config := workflows.PolicyBotConfig()
+	generated := workflows.PolicyBotConfig()
+
+	// The config to write out. With nothing to merge, the generated config goes
+	// out as it is; there is no hand-written config to preserve.
+	var config any = generated
 
 	// Merge the generated config with an existing config, if one was provided
 	if af.MergeConfig.Reader != nil {
@@ -225,11 +246,13 @@ func (af *appFlags) run(name string) error {
 			return err
 		}
 
-		config, err = internal.MergeConfigs(config, mergeConfig)
+		merged, err := internal.MergeConfigs(generated, mergeConfig)
 		if err != nil {
 			af.abort()
 			return fmt.Errorf("failed to merge generated config with existing config: %w", err)
 		}
+
+		config = merged
 	}
 
 	// Write the config to the output file
