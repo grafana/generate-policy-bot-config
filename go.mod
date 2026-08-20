@@ -7,7 +7,7 @@ require (
 	github.com/lmittmann/tint v1.2.0
 	github.com/palantir/policy-bot v1.41.2
 	github.com/redmatter/go-globre/v2 v2.0.0
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/willabides/actionslog v0.5.1
 	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743
 	golang.org/x/term v0.45.0
@@ -16,7 +16,6 @@ require (
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-github/v89 v89.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
@@ -25,7 +24,6 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed // indirect
