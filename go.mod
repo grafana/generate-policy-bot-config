@@ -7,7 +7,7 @@ require (
 	github.com/lmittmann/tint v1.2.0
 	github.com/palantir/policy-bot v1.41.2
 	github.com/redmatter/go-globre/v2 v2.0.0
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/willabides/actionslog v0.5.1
 	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743
 	golang.org/x/term v0.45.0
@@ -28,6 +28,7 @@ require (
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed // indirect
 	github.com/shurcooL/graphql v0.0.0-20240915155400-7ee5256398cf // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
