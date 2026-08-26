@@ -6,19 +6,21 @@ import (
 
 	"github.com/palantir/policy-bot/policy"
 	"github.com/palantir/policy-bot/policy/approval"
+	"gopkg.in/yaml.v3"
 )
 
 // checkApprovalRuleDupes checks for duplicate approval rule names. We don't
 // want to try to merge two rules with the same name. It's easier to reject
 // the merge and ask the user to choose a different name.
-func checkApprovalRuleDupes(rules []*approval.Rule) error {
+func checkApprovalRuleDupes(rules []yaml.Node) error {
 	rulesByName := make(map[string]struct{})
 	var duplicateNames []string
 	for _, rule := range rules {
-		if _, ok := rulesByName[rule.Name]; ok {
-			duplicateNames = append(duplicateNames, rule.Name)
+		name := approvalRuleName(rule)
+		if _, ok := rulesByName[name]; ok {
+			duplicateNames = append(duplicateNames, name)
 		}
-		rulesByName[rule.Name] = struct{}{}
+		rulesByName[name] = struct{}{}
 	}
 
 	if len(duplicateNames) > 0 {
@@ -92,38 +94,64 @@ func mergeApprovals(generatedApproval, mergeWithApproval approval.Policy) (appro
 	return generatedApproval, nil
 }
 
+// mergeDisapprovals picks the disapproval policy for the merged config. We
+// don't know how to sensibly merge two of them, so error if both sides have
+// one. In practice only the hand-written config ever does, because we don't
+// generate disapproval policies.
+func mergeDisapprovals(generated policy.Config, mergeWith Config) (yaml.Node, error) {
+	switch {
+	case generated.Policy.Disapproval != nil && !mergeWith.Policy.Disapproval.IsZero():
+		return yaml.Node{}, errMergeDisapproval{}
+
+	case generated.Policy.Disapproval != nil:
+		node, err := yamlNode(generated.Policy.Disapproval)
+		if err != nil {
+			return yaml.Node{}, ErrInvalidPolicyBotConfig{
+				Err: fmt.Errorf("failed to convert generated disapproval policy: %w", err),
+			}
+		}
+
+		return node, nil
+
+	default:
+		return mergeWith.Policy.Disapproval, nil
+	}
+}
+
 // MergeConfigs combines a generated config with an existing config using deep merging.
 // The existing config takes precedence over the generated config.
-func MergeConfigs(generated, mergeWith policy.Config) (policy.Config, error) {
+//
+// The hand-written config arrives as raw YAML nodes and is copied through
+// as-is, so that it means the same thing after the merge as it did before. See
+// Config for why that matters.
+func MergeConfigs(generated policy.Config, mergeWith Config) (Config, error) {
 	slog.Debug("merging user-provided policy with generated policy")
 
-	// Don't know how to sensibly merge disapprovals (and anyway, we don't
-	// generate one so one side should always be empty). error if both sides
-	// have disapprovals.
-	if generated.Policy.Disapproval != nil && mergeWith.Policy.Disapproval != nil {
-		return policy.Config{}, errMergeDisapproval{}
-	}
-
-	disapproval := generated.Policy.Disapproval
-	if disapproval == nil {
-		disapproval = mergeWith.Policy.Disapproval
+	disapproval, err := mergeDisapprovals(generated, mergeWith)
+	if err != nil {
+		return Config{}, err
 	}
 
 	approvals, err := mergeApprovals(generated.Policy.Approval, mergeWith.Policy.Approval)
 	if err != nil {
-		return policy.Config{}, err
+		return Config{}, err
 	}
 
-	merged := policy.Config{
-		Policy: policy.Policy{
+	generatedRules, err := approvalRuleNodes(generated.ApprovalRules)
+	if err != nil {
+		return Config{}, err
+	}
+
+	merged := Config{
+		Policy: Policy{
 			Approval:    approvals,
 			Disapproval: disapproval,
 		},
-		ApprovalRules: append(generated.ApprovalRules, mergeWith.ApprovalRules...),
+		ApprovalRules: append(generatedRules, mergeWith.ApprovalRules...),
 	}
 
 	if err := checkApprovalRuleDupes(merged.ApprovalRules); err != nil {
-		return policy.Config{}, err
+		return Config{}, err
 	}
 
 	slog.Debug(
@@ -135,7 +163,7 @@ func MergeConfigs(generated, mergeWith policy.Config) (policy.Config, error) {
 		"n_approval_policies_right", len(mergeWith.Policy.Approval),
 		"n_approval_policies_merged", len(merged.Policy.Approval),
 		"has_disapproval_left", generated.Policy.Disapproval != nil,
-		"has_disapproval_right", mergeWith.Policy.Disapproval != nil,
+		"has_disapproval_right", !mergeWith.Policy.Disapproval.IsZero(),
 	)
 
 	return merged, nil
