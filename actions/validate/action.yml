@@ -1,0 +1,26 @@
+name: Validate Policy Bot Config
+description: Validates the Policy Bot configuration file.
+
+inputs:
+  policy:
+    description: |
+      Path to the Policy Bot configuration file.
+    default: .policy.yml
+
+  validation_endpoint:
+    description: |
+      Validation API endpoint.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Validate Policy Bot config
+      shell: bash
+      run: |
+        curl \
+          --silent \
+          --fail-with-body \
+          --request PUT \
+          --upload-file "${{ inputs.policy }}" \
+          "${{ inputs.validation_endpoint }}"
