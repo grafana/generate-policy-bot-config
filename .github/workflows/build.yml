@@ -2,8 +2,6 @@ name: Build
 
 permissions:
   contents: read
-  id-token: write
-  packages: write
 
 on:
   pull_request:
@@ -36,7 +34,30 @@ on:
   merge_group:
 
 jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go toolchain
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: "./go.mod"
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build
+        run: go build -v ./cmd/generate-policy-bot-config
+
   main:
+    needs: test
     permissions:
       attestations: write # for submitting SBOM and provenance attestations
       contents: write # for dependency submission API

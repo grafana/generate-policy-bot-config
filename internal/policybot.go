@@ -32,7 +32,7 @@ var SkippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 func regexpStringsFromGlobs(globs iter.Seq[string]) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		for glob := range globs {
-			regexp := globre.RegexFromGlob(glob)
+			regexp := globre.RegexFromGlob(glob, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true))
 
 			if !yield(regexp) {
 				return
@@ -51,7 +51,7 @@ func RegexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 	regexps := make([]common.Regexp, len(globs))
 
 	for i, glob := range globs {
-		regexp, err := common.NewRegexp(globre.RegexFromGlob(glob))
+		regexp, err := common.NewRegexp(globre.RegexFromGlob(glob, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true)))
 		if err != nil {
 			errors.Globs = append(errors.Globs, glob)
 			continue
