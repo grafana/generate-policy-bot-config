@@ -147,6 +147,39 @@ policy:
 and so "some rule here", if triggered, will approve the group containing the
 workflows.
 
+### Your approval rules are copied through as they are
+
+The `approval_rules` of the merged configuration, and its `policy.disapproval`
+section, are copied into the output verbatim. Comments and key order survive, and
+so does anything Policy Bot understands but we don't.
+
+This matters because Policy Bot decides whether to apply a default by asking
+whether a field was set at all, and its own types can't be written back out
+without losing that distinction: the fields are tagged `omitempty`, so a field
+which was set to an empty value comes out looking unset. The case to know about
+is `methods.comments`:
+
+```yaml
+approval_rules:
+  - name: needs a review
+    requires:
+      count: 1
+    options:
+      methods:
+        comments: []
+        github_review: true
+```
+
+An empty `comments` list is the only way to say that no comment should count as
+approval. Were we to hand that back to Policy Bot through its own types, the
+field would vanish and Policy Bot would reinstate its `:+1:` and `👍` defaults —
+a rule which looks like it demands a review would quietly accept a thumbs-up
+instead.
+
+The `policy.approval` section is the exception: it has to be understood in order
+to be merged at all, so comments in it are still lost. Its contents are plain
+lists and rule names, which don't have this problem.
+
 ## Don't mind the regexes
 
 GitHub Actions uses `doublestar`-style globs for path filters. Policy Bot takes
