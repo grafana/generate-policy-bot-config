@@ -1,4 +1,4 @@
-name: Check for .policy.yml drift
+name: Check .policy.yml
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   drift:
-    name: Check for drift
+    name: Check for drift and validate
     runs-on: ubuntu-latest
     steps:
       - name: Check repository out
@@ -37,3 +37,9 @@ jobs:
         with:
           input_file: .policy.yml
           merge_with: policy.yml
+
+      - name: Validate Policy Bot configuration
+        uses: $/actions/validate
+        with:
+          policy: .policy.yml
+          validation_endpoint: https://github-policy-bot.grafana-ops.net/api/validate
