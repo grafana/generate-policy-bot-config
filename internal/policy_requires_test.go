@@ -17,8 +17,9 @@ import (
 // pullRequest is the part of a pull request which decides whether GitHub runs
 // a workflow for it.
 type pullRequest struct {
-	base  string
-	files []string
+	base    string
+	files   []string
+	deleted []string
 }
 
 // The statuses of a policy for a pull request when no workflow has run. The
@@ -51,9 +52,12 @@ func evaluatePolicy(t *testing.T, on string, prs []pullRequest) []common.Evaluat
 
 	statuses := make([]common.EvaluationStatus, len(prs))
 	for i, pr := range prs {
-		files := make([]*pull.File, len(pr.files))
-		for j, f := range pr.files {
-			files[j] = &pull.File{Filename: f, Status: pull.FileModified}
+		var files []*pull.File
+		for _, f := range pr.files {
+			files = append(files, &pull.File{Filename: f, Status: pull.FileModified})
+		}
+		for _, f := range pr.deleted {
+			files = append(files, &pull.File{Filename: f, Status: pull.FileDeleted})
 		}
 
 		result := evaluator.Evaluate(context.Background(), &pulltest.Context{
@@ -370,6 +374,56 @@ func TestPolicyRequiresWorkflow(t *testing.T) {
 				{base: "develop", files: []string{"docs/x"}},
 			},
 			expected: []common.EvaluationStatus{required, notRequired, notRequired, required},
+		},
+		// For pull_request, GitHub runs the workflow from the pull request's
+		// merge commit, which doesn't have a deleted workflow. For
+		// pull_request_target, it runs the workflow from the base repository's
+		// default branch.
+		{
+			name: "pull_request, with the workflow deleted",
+			on: `
+  pull_request:
+`,
+			prs: []pullRequest{
+				{base: "main", deleted: []string{".github/workflows/w.yml"}},
+				{base: "main", deleted: []string{"x"}},
+			},
+			expected: []common.EvaluationStatus{notRequired, required},
+		},
+		{
+			name: "pull_request_target, with the workflow deleted",
+			on: `
+  pull_request_target:
+`,
+			prs: []pullRequest{
+				{base: "main", deleted: []string{".github/workflows/w.yml"}},
+			},
+			expected: []common.EvaluationStatus{required},
+		},
+		{
+			name: "both events with the same filters, with the workflow deleted",
+			on: `
+  pull_request:
+  pull_request_target:
+`,
+			prs: []pullRequest{
+				{base: "main", deleted: []string{".github/workflows/w.yml"}},
+			},
+			expected: []common.EvaluationStatus{required},
+		},
+		{
+			name: "both events with different filters, with the workflow deleted",
+			on: `
+  pull_request:
+    paths: [".github/**"]
+  pull_request_target:
+    paths: ["src/**"]
+`,
+			prs: []pullRequest{
+				{base: "main", deleted: []string{".github/workflows/w.yml"}},
+				{base: "main", files: []string{"src/x"}, deleted: []string{".github/workflows/w.yml"}},
+			},
+			expected: []common.EvaluationStatus{notRequired, required},
 		},
 	}
 

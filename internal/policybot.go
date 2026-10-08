@@ -30,14 +30,20 @@ var SkippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 type requirement struct {
 	path   filterTerm
 	branch filterTerm
+
+	// needsWorkflow is whether the workflow only runs if the pull request
+	// doesn't delete it.
+	needsWorkflow bool
 }
 
-func (r requirement) equal(other requirement) bool {
+func (r requirement) sameTerms(other requirement) bool {
 	return r.path.equal(other.path) && r.branch.equal(other.branch)
 }
 
 // requirements returns the combinations of path and branch filter terms under
-// which the workflow runs. It runs if any of them matches a pull request.
+// which the workflow runs. It runs if any of them matches a pull request. If
+// two events have the same terms, the workflow needs to exist only if both
+// events need it.
 func requirements(wf GitHubWorkflow) ([]requirement, error) {
 	var result []requirement
 
@@ -54,10 +60,15 @@ func requirements(wf GitHubWorkflow) ([]requirement, error) {
 
 		for _, path := range pathTerms {
 			for _, branch := range branchTerms {
-				r := requirement{path: path, branch: branch}
-				if !slices.ContainsFunc(result, r.equal) {
+				r := requirement{path: path, branch: branch, needsWorkflow: !event.fromBase}
+
+				i := slices.IndexFunc(result, r.sameTerms)
+				if i == -1 {
 					result = append(result, r)
+					continue
 				}
+
+				result[i].needsWorkflow = result[i].needsWorkflow && r.needsWorkflow
 			}
 		}
 	}
@@ -166,12 +177,17 @@ func makeApprovalRules(path string, wf GitHubWorkflow) ([]*approval.Rule, []inte
 			return nil, nil, err
 		}
 
+		var notDeleted *predicate.FileNotDeleted
+		if req.needsWorkflow {
+			notDeleted = &predicate.FileNotDeleted{Paths: []common.Regexp{workflowRegexp}}
+		}
+
 		rule := &approval.Rule{
 			Name: fmt.Sprintf("Workflow %s succeeded or skipped%s", path, suffix),
 			Predicates: predicate.Predicates{
 				ChangedFiles:   changedFiles,
 				TargetsBranch:  targets,
-				FileNotDeleted: &predicate.FileNotDeleted{Paths: []common.Regexp{workflowRegexp}},
+				FileNotDeleted: notDeleted,
 			},
 			Requires: approval.Requires{
 				Conditions: predicate.Predicates{

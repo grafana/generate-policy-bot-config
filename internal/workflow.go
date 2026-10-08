@@ -118,6 +118,11 @@ func (wf GitHubWorkflow) IsPullRequestWorkflow() bool {
 type workflowEvent struct {
 	name    string
 	filters *gitHubWorkflowOnPullRequest
+
+	// fromBase is whether GitHub takes the workflow from the base
+	// repository's default branch, as it does for pull_request_target. If it
+	// doesn't, a pull request which deletes the workflow doesn't run it.
+	fromBase bool
 }
 
 // events returns each pull request event which triggers the workflow. The
@@ -128,7 +133,7 @@ func (wf GitHubWorkflow) events() []workflowEvent {
 		events = append(events, workflowEvent{name: "pull_request", filters: wf.On.PullRequest})
 	}
 	if wf.On.PullRequestTarget != nil {
-		events = append(events, workflowEvent{name: "pull_request_target", filters: wf.On.PullRequestTarget})
+		events = append(events, workflowEvent{name: "pull_request_target", filters: wf.On.PullRequestTarget, fromBase: true})
 	}
 	return events
 }

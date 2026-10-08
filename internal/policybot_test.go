@@ -164,9 +164,8 @@ func TestMakeApprovalRulesStructure(t *testing.T) {
 			on:   "[pull_request, pull_request_target]",
 			expectedRules: []*approval.Rule{
 				{
-					Name:       "Workflow w.yml succeeded or skipped",
-					Predicates: predicate.Predicates{FileNotDeleted: notDeleted},
-					Requires:   requires,
+					Name:     "Workflow w.yml succeeded or skipped",
+					Requires: requires,
 				},
 			},
 			expected: []interface{}{"Workflow w.yml succeeded or skipped"},
