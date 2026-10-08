@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -99,6 +100,71 @@ func TestParseFlags(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, conf)
+		})
+	}
+}
+
+// mainArgsEnv is set when TestMainParseErrors runs the test binary again to
+// call main, which exits the process. It contains the command-line arguments.
+const mainArgsEnv = "GENERATE_POLICY_BOT_CONFIG_MAIN_ARGS"
+
+func TestMainParseErrors(t *testing.T) {
+	if args, ok := os.LookupEnv(mainArgsEnv); ok {
+		os.Args = append([]string{"generate-policy-bot-config"}, strings.Fields(args)...)
+		main()
+		return
+	}
+
+	// usage is the start of the help text, up to the first blank line.
+	type result struct {
+		exitCode int
+		usage    string
+		stderr   string
+	}
+
+	tests := []struct {
+		name     string
+		args     string
+		expected result
+	}{
+		{
+			name:     "Help",
+			args:     "--help",
+			expected: result{exitCode: 0, usage: "Usage:\n  generate-policy-bot-config [OPTIONS] REPO_ROOT"},
+		},
+		{
+			name:     "Missing directory",
+			args:     "-o -",
+			expected: result{exitCode: 1, stderr: "the required argument `REPO_ROOT` was not provided\n"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestMainParseErrors$")
+			cmd.Env = append(os.Environ(), mainArgsEnv+"="+tt.args)
+
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+
+			exitCode := 0
+			err := cmd.Run()
+
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				exitCode = exitErr.ExitCode()
+				err = nil
+			}
+			require.NoError(t, err)
+
+			usage, _, _ := strings.Cut(stdout.String(), "\n\n")
+
+			require.Equal(t, tt.expected, result{
+				exitCode: exitCode,
+				usage:    usage,
+				stderr:   stderr.String(),
+			})
 		})
 	}
 }

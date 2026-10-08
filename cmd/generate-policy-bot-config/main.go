@@ -36,12 +36,9 @@ func header(programName string, mergeFilename string) string {
 	return sb.String()
 }
 
-const usage = `%s [path/to/repo_root]
-
-Discovers GitHub Actions workflows and generates a policy bot configuration file
-which enforces that they pass. If paths are specified in the workflow, the policy
-will enforce that the workflow passes only when the paths are modified in the
-PR.`
+const description = "Discovers GitHub Actions workflows and generates a policy bot configuration " +
+	"file which enforces that they pass. If paths are specified in the workflow, the policy " +
+	"will enforce that the workflow passes only when the paths are modified in the PR."
 
 // rootDir represents the root directory to search for workflows. It is a
 // wrapper around fs.FS which reads from a directory when unmarshaled from a
@@ -167,7 +164,7 @@ func (l *level) UnmarshalFlag(value string) error {
 }
 
 type rootArgs struct {
-	Root rootDir
+	Root rootDir `positional-arg-name:"REPO_ROOT"`
 }
 
 type appFlags struct {
@@ -338,18 +335,15 @@ func main() {
 
 	var conf appFlags
 	parser := flags.NewParser(&conf, flags.Default)
-	parser.Usage = fmt.Sprintf(usage, parser.Name)
+	parser.LongDescription = description
 
 	if _, err := parser.Parse(); err != nil {
-		switch err.(type) {
-		// The flags package prints its own error messages, don't repeat them
-		case flags.ErrorType:
-		default:
-			slog.Error(err.Error())
-			if !flags.WroteHelp(err) {
-				parser.WriteHelp(os.Stderr)
-			}
+		// The flags package has already printed the error, or the help text
+		// for --help.
+		if flags.WroteHelp(err) {
+			os.Exit(0)
 		}
+
 		os.Exit(1)
 	}
 
