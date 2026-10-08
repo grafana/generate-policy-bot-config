@@ -26,15 +26,62 @@ const DefaultToApproval = "default to approval"
 // allow the approval rule.
 var SkippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 
+// regexpFromGlob converts a GitHub Actions filter pattern into a regular
+// expression.
+//
+// go-globre treats "**" as matching any number of directories only when it is a
+// whole path segment, and as "*" anywhere else. GitHub's "**" matches any
+// characters, including "/", wherever it appears: "**.js" matches
+// "src/js/app.js". So the glob is split at each "**" which isn't a whole
+// segment, and the converted parts are joined with ".*".
+func regexpFromGlob(glob string) string {
+	parts := splitAtPartialGlobstars(glob)
+	regexps := make([]string, len(parts))
+
+	for i, part := range parts {
+		regexp := globre.RegexFromGlob(part, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true))
+		regexps[i] = strings.TrimSuffix(strings.TrimPrefix(regexp, "^"), "$")
+	}
+
+	return "^" + strings.Join(regexps, ".*") + "$"
+}
+
+// splitAtPartialGlobstars splits glob at each run of two or more "*" which
+// isn't a whole path segment. The runs themselves are dropped.
+func splitAtPartialGlobstars(glob string) []string {
+	var parts []string
+	start := 0
+
+	for i := 0; i < len(glob); {
+		if glob[i] != '*' {
+			i++
+			continue
+		}
+
+		end := i
+		for end < len(glob) && glob[end] == '*' {
+			end++
+		}
+
+		wholeSegment := (i == 0 || glob[i-1] == '/') && (end == len(glob) || glob[end] == '/')
+		if end-i > 1 && !wholeSegment {
+			parts = append(parts, glob[start:i])
+			start = end
+		}
+
+		i = end
+	}
+
+	return append(parts, glob[start:])
+}
+
 // regexpsFromGlobs converts a sequence of glob patterns into a sequence of regular
 // expressions. A conversion is needed because policy-bot takes regular
 // expressions and GitHub Actions workflows use glob patterns.
 func regexpStringsFromGlobs(globs iter.Seq[string]) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		for glob := range globs {
-			regexp := globre.RegexFromGlob(glob, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true))
-
-			if !yield(regexp) {
+			if !yield(regexpFromGlob(glob)) {
 				return
 			}
 		}
@@ -51,7 +98,7 @@ func RegexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 	regexps := make([]common.Regexp, len(globs))
 
 	for i, glob := range globs {
-		regexp, err := common.NewRegexp(globre.RegexFromGlob(glob, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true)))
+		regexp, err := common.NewRegexp(regexpFromGlob(glob))
 		if err != nil {
 			errors.Globs = append(errors.Globs, glob)
 			continue
