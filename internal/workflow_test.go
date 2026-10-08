@@ -165,40 +165,6 @@ func TestGitHubWorkflowIsPullRequestWorkflow(t *testing.T) {
 	}
 }
 
-func TestGitHubWorkflowPaths(t *testing.T) {
-	workflow := GitHubWorkflow{
-		On: githubWorkflowHeader{
-			PullRequest: &gitHubWorkflowOnPullRequest{
-				Paths: []string{"src/**", "tests/**"},
-			},
-			PullRequestTarget: &gitHubWorkflowOnPullRequest{
-				Paths: []string{"docs/**", "README.md"},
-			},
-		},
-	}
-
-	expected := []string{"src/**", "tests/**", "docs/**", "README.md"}
-	result := workflow.paths()
-	require.ElementsMatch(t, expected, result)
-}
-
-func TestGitHubWorkflowIgnorePaths(t *testing.T) {
-	workflow := GitHubWorkflow{
-		On: githubWorkflowHeader{
-			PullRequest: &gitHubWorkflowOnPullRequest{
-				PathsIgnore: []string{"vendor/**", "*.md"},
-			},
-			PullRequestTarget: &gitHubWorkflowOnPullRequest{
-				PathsIgnore: []string{"docs/**", "CHANGELOG.md"},
-			},
-		},
-	}
-
-	expected := []string{"vendor/**", "*.md", "docs/**", "CHANGELOG.md"}
-	result := workflow.ignorePaths()
-	require.ElementsMatch(t, expected, result)
-}
-
 func FuzzGitHubWorkflowUnmarshalYAML(f *testing.F) {
 	f.Add([]byte("on: pull_request"))
 	f.Add([]byte("on: [pull_request, pull_request_target]"))
@@ -215,10 +181,6 @@ on:
 
 		// Check that no matter what input we get, isPullRequestWorkflow doesn't panic
 		_ = wf.IsPullRequestWorkflow()
-
-		// Check that paths() and ignorePaths() don't panic
-		_ = wf.paths()
-		_ = wf.ignorePaths()
 	})
 }
 

@@ -3,6 +3,7 @@ package internal
 import (
 	"regexp"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 )
@@ -618,4 +619,24 @@ func TestFilterPatternRegexpErrors(t *testing.T) {
 			require.Equal(t, tc.expected, err)
 		})
 	}
+}
+
+func FuzzFilterPatternRegexp(f *testing.F) {
+	f.Add("*.go")
+	f.Add("src/**/*.js")
+	f.Add("[invalid")
+	f.Add("?x")
+
+	f.Fuzz(func(t *testing.T, pattern string) {
+		source, err := filterPattern(pattern).regexp()
+		if err != nil {
+			return
+		}
+
+		// Patterns from YAML are valid UTF-8, and those which convert have to
+		// give a regular expression which compiles.
+		if _, err := regexp.Compile(source); err != nil && utf8.ValidString(pattern) {
+			t.Fatalf("pattern %q gave %q, which doesn't compile: %v", pattern, source, err)
+		}
+	})
 }

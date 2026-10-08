@@ -36,15 +36,6 @@ func mustRegexps(t *testing.T, patterns ...string) []common.Regexp {
 	return result
 }
 
-func mustRegexpsFromGlobs(t *testing.T, globs []string) []common.Regexp {
-	t.Helper()
-
-	result, err := internal.RegexpsFromGlobs(globs)
-	require.NoError(t, err)
-
-	return result
-}
-
 func TestParseFlags(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -379,7 +370,7 @@ on:
 						Name: "Workflow .github/workflows/workflow.yml succeeded or skipped",
 						Predicates: predicate.Predicates{
 							ChangedFiles: &predicate.ChangedFiles{
-								Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
+								Paths: mustRegexps(t, "^src/.*$"),
 							},
 							FileNotDeleted: &predicate.FileNotDeleted{
 								Paths: mustRegexps(t, `^\.github/workflows/workflow\.yml$`),
@@ -544,7 +535,7 @@ func expectedConfig(t *testing.T) policy.Config {
 				Name: "Workflow .github/workflows/workflow.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
-						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
+						Paths: mustRegexps(t, "^src/.*$"),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
 						Paths: mustRegexps(t, `^\.github/workflows/workflow\.yml$`),

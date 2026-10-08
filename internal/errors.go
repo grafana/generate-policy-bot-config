@@ -46,15 +46,6 @@ func (e errUnexpectedType) Error() string {
 	return fmt.Sprintf("unexpected type for workflow `on`. got: %s. expected: string, list or map", e.Type)
 }
 
-// errInvalidGlobs is returned when an invalid glob pattern is encountered in a workflow file.
-type errInvalidGlobs struct {
-	Globs []string
-}
-
-func (e errInvalidGlobs) Error() string {
-	return fmt.Sprintf("invalid globs: %v", strings.Join(e.Globs, ", "))
-}
-
 // errInvalidWorkflowPath is returned when a workflow's path can't be matched by
 // a regular expression, because it isn't valid UTF-8.
 type errInvalidWorkflowPath struct {
@@ -84,6 +75,56 @@ func (e errInvalidFilterPattern) Error() string {
 
 func (e errInvalidFilterPattern) Unwrap() error {
 	return e.Err
+}
+
+// errInvalidFilterPatterns is returned when one or more of the patterns in a
+// filter list are invalid. It has an error for each of them.
+type errInvalidFilterPatterns []errInvalidFilterPattern
+
+func (e errInvalidFilterPatterns) Error() string {
+	messages := make([]string, len(e))
+	for i, err := range e {
+		messages[i] = err.Error()
+	}
+
+	return strings.Join(messages, "; ")
+}
+
+func (e errInvalidFilterPatterns) Unwrap() []error {
+	errs := make([]error, len(e))
+	for i, err := range e {
+		errs[i] = err
+	}
+
+	return errs
+}
+
+// errInvalidFilter is returned when one of a workflow event's filters, like
+// `paths` or `branches-ignore`, can't be used.
+type errInvalidFilter struct {
+	Event  string
+	Filter string
+	Err    error
+}
+
+func (e errInvalidFilter) Error() string {
+	return fmt.Sprintf("invalid %s filter for %s: %v", e.Filter, e.Event, e.Err)
+}
+
+func (e errInvalidFilter) Unwrap() error {
+	return e.Err
+}
+
+// errConflictingFilters is returned when a workflow event has both a filter and
+// its `-ignore` variant, like `paths` and `paths-ignore`, which GitHub doesn't
+// allow.
+type errConflictingFilters struct {
+	Event  string
+	Filter string
+}
+
+func (e errConflictingFilters) Error() string {
+	return fmt.Sprintf("%s can't have both %s and %s-ignore", e.Event, e.Filter, e.Filter)
 }
 
 // errMisplacedQuantifier is returned for a "?" or "+" which follows a wildcard

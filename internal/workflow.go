@@ -18,10 +18,11 @@ var defaultTypes = []string{
 // gitHubWorkflowOnPullRequest represents the configuration for pull request
 // triggers in a GitHub Actions workflow.
 type gitHubWorkflowOnPullRequest struct {
-	Branches    []string
-	Paths       []string
-	PathsIgnore []string `yaml:"paths-ignore"`
-	Types       []string
+	Branches       []string
+	BranchesIgnore []string `yaml:"branches-ignore"`
+	Paths          []string
+	PathsIgnore    []string `yaml:"paths-ignore"`
+	Types          []string
 }
 
 // githubWorkflowHeader represents the 'on' section of a GitHub Actions workflow file.
@@ -112,44 +113,24 @@ func (wf GitHubWorkflow) IsPullRequestWorkflow() bool {
 	return wf.On.PullRequest != nil || wf.On.PullRequestTarget != nil
 }
 
-// branches returns the combined branches from PullRequest and PullRequestTarget.
-// These are the branches that might trigger a run on a pull request.
-func (wf GitHubWorkflow) branches() []string {
-	var branches []string
-	if wf.On.PullRequest != nil {
-		branches = append(branches, wf.On.PullRequest.Branches...)
-	}
-	if wf.On.PullRequestTarget != nil {
-		branches = append(branches, wf.On.PullRequestTarget.Branches...)
-	}
-	return branches
+// workflowEvent is a pull request event which triggers a workflow, with the
+// event's filters.
+type workflowEvent struct {
+	name    string
+	filters *gitHubWorkflowOnPullRequest
 }
 
-// paths returns the combined paths from PullRequest and PullRequestTarget.
-// These are the paths that might trigger a run on a pull request.
-func (wf GitHubWorkflow) paths() []string {
-	var paths []string
+// events returns each pull request event which triggers the workflow. The
+// workflow runs if any of them does.
+func (wf GitHubWorkflow) events() []workflowEvent {
+	var events []workflowEvent
 	if wf.On.PullRequest != nil {
-		paths = append(paths, wf.On.PullRequest.Paths...)
+		events = append(events, workflowEvent{name: "pull_request", filters: wf.On.PullRequest})
 	}
 	if wf.On.PullRequestTarget != nil {
-		paths = append(paths, wf.On.PullRequestTarget.Paths...)
+		events = append(events, workflowEvent{name: "pull_request_target", filters: wf.On.PullRequestTarget})
 	}
-	return paths
-}
-
-// ignorePaths returns the combined ignore paths from PullRequest and
-// PullRequestTarget. These are the paths that should be ignored when
-// determining if a run should be triggered on a pull request.
-func (wf GitHubWorkflow) ignorePaths() []string {
-	var ignorePaths []string
-	if wf.On.PullRequest != nil {
-		ignorePaths = append(ignorePaths, wf.On.PullRequest.PathsIgnore...)
-	}
-	if wf.On.PullRequestTarget != nil {
-		ignorePaths = append(ignorePaths, wf.On.PullRequestTarget.PathsIgnore...)
-	}
-	return ignorePaths
+	return events
 }
 
 func (wf GitHubWorkflow) types() []string {
