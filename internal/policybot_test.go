@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"regexp/syntax"
 	"testing"
 
 	"github.com/palantir/policy-bot/policy"
@@ -16,6 +17,17 @@ func mustRegexp(t *testing.T, pattern string) common.Regexp {
 
 	result, err := common.NewRegexp(pattern)
 	require.NoError(t, err)
+
+	return result
+}
+
+func mustRegexps(t *testing.T, patterns ...string) []common.Regexp {
+	t.Helper()
+
+	result := make([]common.Regexp, len(patterns))
+	for i, pattern := range patterns {
+		result[i] = mustRegexp(t, pattern)
+	}
 
 	return result
 }
@@ -209,7 +221,7 @@ func TestMakeApprovalRule(t *testing.T) {
 						IgnorePaths: mustRegexpsFromGlobs(t, []string{"docs/**"}),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/test\.yml$`),
 					},
 				},
 				Requires: approval.Requires{
@@ -234,7 +246,7 @@ func TestMakeApprovalRule(t *testing.T) {
 				Name: "Workflow .github/workflows/build.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/build.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/build\.yml$`),
 					},
 				},
 				Requires: approval.Requires{
@@ -264,7 +276,7 @@ func TestMakeApprovalRule(t *testing.T) {
 						Pattern: mustRegexp(t, "(^main$|^develop$)"),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/test\.yml$`),
 					},
 				},
 				Requires: approval.Requires{
@@ -300,7 +312,7 @@ func TestMakeApprovalRule(t *testing.T) {
 						Pattern: mustRegexp(t, "(^main$|^develop$)"),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/test\.yml$`),
 					},
 				},
 				Requires: approval.Requires{
@@ -366,6 +378,57 @@ func TestMakeApprovalRule(t *testing.T) {
 	}
 }
 
+// TestFileNotDeletedMatchesWorkflowLiterally checks that a workflow's own file
+// name is matched as it is, even when it contains glob syntax.
+func TestFileNotDeletedMatchesWorkflowLiterally(t *testing.T) {
+	testCases := []struct {
+		path   string
+		regexp string
+	}{
+		{path: ".github/workflows/c++.yml", regexp: `^\.github/workflows/c\+\+\.yml$`},
+		{path: ".github/workflows/ci[1].yml", regexp: `^\.github/workflows/ci\[1\]\.yml$`},
+		{path: ".github/workflows/what?.yml", regexp: `^\.github/workflows/what\?\.yml$`},
+		{path: ".github/workflows/{a,b}.yml", regexp: `^\.github/workflows/\{a,b\}\.yml$`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.path, func(t *testing.T) {
+			rule, err := makeApprovalRule(tc.path, GitHubWorkflow{
+				On: githubWorkflowHeader{PullRequest: &gitHubWorkflowOnPullRequest{}},
+			})
+			require.NoError(t, err)
+
+			require.Equal(t, &approval.Rule{
+				Name: "Workflow " + tc.path + " succeeded or skipped",
+				Predicates: predicate.Predicates{
+					FileNotDeleted: &predicate.FileNotDeleted{
+						Paths: []common.Regexp{mustRegexp(t, tc.regexp)},
+					},
+				},
+				Requires: approval.Requires{
+					Conditions: predicate.Predicates{
+						HasWorkflowResult: &predicate.HasWorkflowResult{
+							Conclusions: SkippedOrSuccess,
+							Workflows:   []string{tc.path},
+						},
+					},
+				},
+			}, rule)
+		})
+	}
+}
+
+func TestMakeApprovalRuleInvalidWorkflowPath(t *testing.T) {
+	_, err := makeApprovalRule(".github/workflows/\xff.yml", GitHubWorkflow{
+		On: githubWorkflowHeader{PullRequest: &gitHubWorkflowOnPullRequest{}},
+	})
+
+	require.Equal(t, errInvalidWorkflowPath{
+		Path: ".github/workflows/\xff.yml",
+		Err:  &syntax.Error{Code: syntax.ErrInvalidUTF8, Expr: "\xff\\.yml$"},
+	}, err)
+}
+
 func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 	workflows := GitHubWorkflowCollection{
 		".github/workflows/test.yml": GitHubWorkflow{
@@ -403,7 +466,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 				Name: "Workflow .github/workflows/build.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/build.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/build\.yml$`),
 					},
 				},
 				Requires: approval.Requires{
@@ -422,7 +485,7 @@ func TestGitHubWorkflowCollectionPolicyBotConfig(t *testing.T) {
 						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/test.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/test\.yml$`),
 					},
 				},
 				Requires: approval.Requires{

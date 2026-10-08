@@ -22,6 +22,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func mustRegexps(t *testing.T, patterns ...string) []common.Regexp {
+	t.Helper()
+
+	result := make([]common.Regexp, len(patterns))
+	for i, pattern := range patterns {
+		re, err := common.NewRegexp(pattern)
+		require.NoError(t, err)
+
+		result[i] = re
+	}
+
+	return result
+}
+
 func mustRegexpsFromGlobs(t *testing.T, globs []string) []common.Regexp {
 	t.Helper()
 
@@ -368,7 +382,7 @@ on:
 								Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
 							},
 							FileNotDeleted: &predicate.FileNotDeleted{
-								Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/workflow.yml"}),
+								Paths: mustRegexps(t, `^\.github/workflows/workflow\.yml$`),
 							},
 						},
 						Requires: approval.Requires{
@@ -533,7 +547,7 @@ func expectedConfig(t *testing.T) policy.Config {
 						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/workflow.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/workflow\.yml$`),
 					},
 				},
 				Requires: approval.Requires{

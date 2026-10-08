@@ -5,6 +5,7 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -162,13 +163,13 @@ func makeApprovalRule(path string, wf GitHubWorkflow) (*approval.Rule, error) {
 		}
 	}
 
-	regexPath, err := RegexpsFromGlobs([]string{path})
+	workflowRegexp, err := common.NewRegexp("^" + regexp.QuoteMeta(path) + "$")
 	if err != nil {
-		return nil, fmt.Errorf("couldn't convert path to regex: %w", err)
+		return nil, errInvalidWorkflowPath{Path: path, Err: err}
 	}
 
 	preds.FileNotDeleted = &predicate.FileNotDeleted{
-		Paths: regexPath,
+		Paths: []common.Regexp{workflowRegexp},
 	}
 
 	requires := approval.Requires{

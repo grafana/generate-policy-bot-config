@@ -55,6 +55,21 @@ func (e errInvalidGlobs) Error() string {
 	return fmt.Sprintf("invalid globs: %v", strings.Join(e.Globs, ", "))
 }
 
+// errInvalidWorkflowPath is returned when a workflow's path can't be matched by
+// a regular expression, because it isn't valid UTF-8.
+type errInvalidWorkflowPath struct {
+	Path string
+	Err  error
+}
+
+func (e errInvalidWorkflowPath) Error() string {
+	return fmt.Sprintf("can't match workflow path %q: %v", e.Path, e.Err)
+}
+
+func (e errInvalidWorkflowPath) Unwrap() error {
+	return e.Err
+}
+
 // errMergeDisapproval is returned when we try to merge configs which both
 // contain disapproval rules. We don't know how to sensibly merge disapprovals,
 // so we error.
