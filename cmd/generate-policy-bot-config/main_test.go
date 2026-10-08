@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -33,21 +32,32 @@ func TestParseFlags(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        []string
-		expectedDir string
-		expectedOut string
+		expected    appFlags
 		expectError bool
 	}{
 		{
-			name:        "Valid arguments",
-			args:        []string{"-o", "output.yml"},
-			expectedDir: "testdir",
-			expectedOut: "output.yml",
+			name: "Output to file",
+			args: []string{"-o", "output.yml", "testdir"},
+			expected: appFlags{
+				Output: output{path: "output.yml"},
+				Args:   rootArgs{Root: rootDir{os.DirFS("testdir")}},
+			},
 		},
 		{
-			name:        "Output to stdout",
-			args:        []string{"-o", "-"},
-			expectedDir: "testdir",
-			expectedOut: "-",
+			name: "Output to stdout",
+			args: []string{"-o", "-", "testdir"},
+			expected: appFlags{
+				Output: output{stdout: true},
+				Args:   rootArgs{Root: rootDir{os.DirFS("testdir")}},
+			},
+		},
+		{
+			name: "Default output",
+			args: []string{"testdir"},
+			expected: appFlags{
+				Output: output{path: ".policy.yml"},
+				Args:   rootArgs{Root: rootDir{os.DirFS("testdir")}},
+			},
 		},
 		{
 			name:        "Missing directory",
@@ -58,29 +68,7 @@ func TestParseFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			savedStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			t.Cleanup(func() {
-				r.Close()
-				w.Close()
-				os.Stdout = savedStdout
-			})
 			var conf appFlags
-			t.Cleanup(func() {
-				// Parsing may create a temporary file which we should clean up.
-				err := conf.OutputWriter.Abort()
-				require.NoError(t, err)
-			})
-
-			if tt.expectedDir != "" {
-				testDir := filepath.Join(t.TempDir(), tt.expectedDir)
-				tt.args = append(tt.args, testDir)
-
-				require.NoError(t, os.MkdirAll(testDir, 0755))
-				require.NoError(t, os.WriteFile(filepath.Join(testDir, "test_file.txt"), []byte(""), 0644))
-			}
-
 			parser := flags.NewParser(&conf, flags.Default)
 			_, err := parser.ParseArgs(tt.args)
 
@@ -90,37 +78,79 @@ func TestParseFlags(t *testing.T) {
 			}
 
 			require.NoError(t, err)
+			require.Equal(t, tt.expected, conf)
+		})
+	}
+}
 
-			// Check if the FS is pointing to the correct directory: if we are
-			// going to look in the directory we were given.
-			f, err := conf.Args.Root.Open("test_file.txt")
-			require.NoError(t, err)
-			require.NoError(t, f.Close())
+func TestOutputWrite(t *testing.T) {
+	errGenerate := errors.New("fake generate error")
+	errRename := errors.New("fake rename error")
+	errCreateTemp := errors.New("fake create temp error")
 
-			// Now check that we're writing output to the correct place.
-			testBytes := []byte("test\n")
-			_, err = conf.OutputWriter.Write(testBytes)
-			require.NoError(t, err)
-			require.NoError(t, conf.OutputWriter.Close())
+	// result is what write leaves behind: the files in the filesystem and what
+	// was written to standard output.
+	type result struct {
+		files  map[string]string
+		stdout string
+	}
 
-			// We redirected stdout above, and we already have a reader for it
-			// in `r`. But if we're outputting to a file instead, we need to
-			// open that now.
-			if tt.expectedOut != "-" {
-				// Set `r` to a reader that reads from our expected output file
-				f, err := os.Open(tt.expectedOut)
+	tests := []struct {
+		name          string
+		output        output
+		fsys          *internal.MemFS
+		generateErr   error
+		expected      result
+		expectedError error
+	}{
+		{
+			name:     "Standard output",
+			output:   output{stdout: true},
+			fsys:     &internal.MemFS{},
+			expected: result{stdout: "content"},
+		},
+		{
+			name:     "File",
+			output:   output{path: "out/policy.yml"},
+			fsys:     &internal.MemFS{},
+			expected: result{files: map[string]string{"out/policy.yml": "content"}},
+		},
+		{
+			name:          "Generate error removes the temporary file",
+			output:        output{path: "out/policy.yml"},
+			fsys:          &internal.MemFS{},
+			generateErr:   errGenerate,
+			expected:      result{files: map[string]string{}},
+			expectedError: errGenerate,
+		},
+		{
+			name:          "Rename error",
+			output:        output{path: "out/policy.yml"},
+			fsys:          &internal.MemFS{RenameErr: errRename},
+			expected:      result{files: map[string]string{}},
+			expectedError: errRename,
+		},
+		{
+			name:          "Create temp error",
+			output:        output{path: "out/policy.yml"},
+			fsys:          &internal.MemFS{CreateTempErr: errCreateTemp},
+			expectedError: errCreateTemp,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stdout := &bytes.Buffer{}
+
+			err := tt.output.write(tt.fsys, stdout, func(w io.Writer) error {
+				_, err := io.WriteString(w, "content")
 				require.NoError(t, err)
-				t.Cleanup(func() {
-					require.NoError(t, f.Close())
-				})
 
-				r = f
-			}
+				return tt.generateErr
+			})
 
-			content, err := io.ReadAll(r)
-			require.NoError(t, err)
-
-			require.Equal(t, testBytes, content)
+			require.ErrorIs(t, err, tt.expectedError)
+			require.Equal(t, tt.expected, result{files: tt.fsys.Files, stdout: stdout.String()})
 		})
 	}
 }
@@ -163,45 +193,6 @@ on:
 	require.Len(t, workflows, 1)
 	require.Contains(t, workflows, ".github/workflows/pr_workflow.yml")
 	require.NotContains(t, workflows, ".github/workflows/non_pr_workflow.yml")
-}
-
-type bytesBufferCloser struct {
-	*bytes.Buffer
-}
-
-func (b *bytesBufferCloser) Close() error {
-	return nil
-}
-
-var errFakeRename = errors.New("fake rename error")
-
-// renameErrorWriter is a WriteCloserRenamerRemover which accepts writes but
-// fails to rename, like a temporary file that can't be moved into place.
-type renameErrorWriter struct {
-	*bytesBufferCloser
-}
-
-func (renameErrorWriter) RenameTo(dest string) error { return errFakeRename }
-func (renameErrorWriter) Remove() error              { return nil }
-
-func TestRunReturnsCloseError(t *testing.T) {
-	mapFS := fstest.MapFS{
-		".github/workflows/workflow.yml": &fstest.MapFile{Data: []byte(`
-on:
-  pull_request:
-    paths: ["src/**"]
-`)},
-	}
-
-	conf := appFlags{
-		Args: rootArgs{Root: rootDir{mapFS}},
-		OutputWriter: &internal.RenamingWriter{
-			WriteCloserRenamerRemover: renameErrorWriter{&bytesBufferCloser{&bytes.Buffer{}}},
-		},
-	}
-
-	err := conf.run("test-command")
-	require.ErrorIs(t, err, errFakeRename)
 }
 
 func TestRun(t *testing.T) {
@@ -288,16 +279,9 @@ on:
 			}
 
 			outputBuffer := &bytes.Buffer{}
-			conf := appFlags{
-				Args: rootArgs{Root: rootDir{mapFS}},
-				OutputWriter: &internal.RenamingWriter{
-					WriteCloserRenamerRemover: internal.NopRenamerRemover{
-						WriteCloser: &bytesBufferCloser{outputBuffer},
-					},
-				},
-			}
+			conf := appFlags{Args: rootArgs{Root: rootDir{mapFS}}}
 
-			err := conf.run("test-command")
+			err := conf.run("test-command", outputBuffer)
 
 			require.NoError(t, err)
 
@@ -355,16 +339,9 @@ on:
 	for i := 0; i < b.N; i++ {
 		buf := &bytes.Buffer{}
 
-		conf := appFlags{
-			Args: rootArgs{Root: rootDir{mapFS}},
-			OutputWriter: &internal.RenamingWriter{
-				WriteCloserRenamerRemover: internal.NopRenamerRemover{
-					WriteCloser: &bytesBufferCloser{buf},
-				},
-			},
-		}
+		conf := appFlags{Args: rootArgs{Root: rootDir{mapFS}}}
 
-		err := conf.run("test-command")
+		err := conf.run("test-command", buf)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -439,14 +416,9 @@ func expectedConfig(t *testing.T) policy.Config {
 	}
 }
 
-func testAppFlags(mapFS fstest.MapFS, outputBuffer *bytes.Buffer, mergeReader reader) appFlags {
+func testAppFlags(mapFS fstest.MapFS, mergeReader reader) appFlags {
 	return appFlags{
-		Args: rootArgs{Root: rootDir{mapFS}},
-		OutputWriter: &internal.RenamingWriter{
-			WriteCloserRenamerRemover: internal.NopRenamerRemover{
-				WriteCloser: &bytesBufferCloser{outputBuffer},
-			},
-		},
+		Args:        rootArgs{Root: rootDir{mapFS}},
 		MergeConfig: mergeReader,
 	}
 }
@@ -518,9 +490,9 @@ approval_rules:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outputBuffer := &bytes.Buffer{}
-			conf := testAppFlags(mapFS, outputBuffer, tt.mergeReader)
+			conf := testAppFlags(mapFS, tt.mergeReader)
 
-			err := conf.run("test-command")
+			err := conf.run("test-command", outputBuffer)
 
 			if tt.expectedError != nil {
 				require.ErrorIs(t, err, tt.expectedError)

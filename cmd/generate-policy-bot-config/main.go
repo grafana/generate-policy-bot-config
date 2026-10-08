@@ -86,6 +86,52 @@ func (m *reader) UnmarshalFlag(value string) error {
 	return nil
 }
 
+// output is where to write the generated config, as given by --output. If the
+// value is "-", write to standard output. Otherwise, write to the file at the
+// given path.
+type output struct {
+	stdout bool
+	path   string
+}
+
+func (o *output) UnmarshalFlag(value string) error {
+	if value == "-" {
+		*o = output{stdout: true}
+		return nil
+	}
+
+	*o = output{path: value}
+	return nil
+}
+
+// write calls generate with a writer for this output. A file is written to a
+// temporary file in fsys, which is only renamed into place if generate
+// succeeds.
+func (o output) write(fsys internal.WritableFS, stdout io.Writer, generate func(io.Writer) error) error {
+	if o.stdout {
+		return generate(stdout)
+	}
+
+	w, err := internal.NewRenamingWriter(fsys, o.path)
+	if err != nil {
+		return err
+	}
+
+	if err := generate(w); err != nil {
+		if abortErr := w.Abort(); abortErr != nil {
+			slog.Warn("failed to abort", "error", abortErr)
+		}
+
+		return err
+	}
+
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+
+	return nil
+}
+
 type level slog.Level
 
 func (l *level) UnmarshalFlag(value string) error {
@@ -104,9 +150,9 @@ type rootArgs struct {
 }
 
 type appFlags struct {
-	OutputWriter *internal.RenamingWriter `long:"output" short:"o" description:"Output file. If this is \"-\", write to standard output" default:".policy.yml"`
-	LogLevel     *level                   `long:"log-level" short:"l" description:"Log level"`
-	MergeConfig  reader                   `long:"merge-with" short:"m" description:"File to merge with generated config. If this is \"-\", read from standard input. If empty, no merging occurs."`
+	Output      output `long:"output" short:"o" description:"Output file. If this is \"-\", write to standard output" default:".policy.yml"`
+	LogLevel    *level `long:"log-level" short:"l" description:"Log level"`
+	MergeConfig reader `long:"merge-with" short:"m" description:"File to merge with generated config. If this is \"-\", read from standard input. If empty, no merging occurs."`
 
 	Args rootArgs `positional-args:"yes" required:"yes"`
 }
@@ -186,12 +232,6 @@ func (af *appFlags) parsePRWorkflows() (internal.GitHubWorkflowCollection, error
 	return workflows, nil
 }
 
-func (af *appFlags) abort() {
-	if err := af.OutputWriter.Abort(); err != nil {
-		slog.Warn("failed to abort", "error", err)
-	}
-}
-
 // loadConfigFromReader reads a policy bot config from the given reader. This is
 // used to merge the generated config with an existing config.
 func loadConfigFromReader(r io.Reader) (policy.Config, error) {
@@ -203,13 +243,10 @@ func loadConfigFromReader(r io.Reader) (policy.Config, error) {
 	return config, nil
 }
 
-func (af *appFlags) run(name string) error {
-	dest := af.OutputWriter
-
+func (af *appFlags) run(name string, w io.Writer) error {
 	// Find and parse all the workflows
 	workflows, err := af.parsePRWorkflows()
 	if err != nil {
-		af.abort()
 		return err
 	}
 
@@ -220,30 +257,22 @@ func (af *appFlags) run(name string) error {
 	if af.MergeConfig.Reader != nil {
 		mergeConfig, err := loadConfigFromReader(af.MergeConfig)
 		if err != nil {
-			af.abort()
 			return err
 		}
 
 		config, err = internal.MergeConfigs(config, mergeConfig)
 		if err != nil {
-			af.abort()
 			return fmt.Errorf("failed to merge generated config with existing config: %w", err)
 		}
 	}
 
 	// Write the config to the output file
-	if _, err := dest.Write([]byte(header(name, af.MergeConfig.filename))); err != nil {
-		af.abort()
+	if _, err := w.Write([]byte(header(name, af.MergeConfig.filename))); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
-	if err := internal.WriteYamlToWriter(dest, config); err != nil {
-		af.abort()
+	if err := internal.WriteYamlToWriter(w, config); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
-	}
-
-	if err := dest.Close(); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
 	}
 
 	return nil
@@ -287,13 +316,6 @@ func main() {
 	lv := setupLogger()
 
 	var conf appFlags
-	defer func() {
-		err := conf.OutputWriter.Abort()
-		if err != nil {
-			slog.Warn("attempted to abort when exiting, but failed", "error", err)
-		}
-	}()
-
 	parser := flags.NewParser(&conf, flags.Default)
 	parser.Usage = fmt.Sprintf(usage, parser.Name)
 
@@ -315,7 +337,10 @@ func main() {
 	}
 	slog.Debug("debug logging enabled")
 
-	if err := conf.run(parser.Name); err != nil {
+	err := conf.Output.write(internal.OSFS{}, os.Stdout, func(w io.Writer) error {
+		return conf.run(parser.Name, w)
+	})
+	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
