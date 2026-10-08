@@ -1,9 +1,6 @@
 name: Build
 
-permissions:
-  contents: read
-  id-token: write
-  packages: write
+permissions: {}
 
 on:
   pull_request:
@@ -35,13 +32,19 @@ on:
 
   merge_group:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   main:
+    name: Build container image
+
     permissions:
       attestations: write # for submitting SBOM and provenance attestations
       contents: write # for dependency submission API
       id-token: write # needed to sign SBOM and provenance attestations
-      packages: write
+      packages: write # for pushing the image and its attestations to GHCR
 
     runs-on: ubuntu-latest
 

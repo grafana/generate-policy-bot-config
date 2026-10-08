@@ -7,14 +7,22 @@ on:
     types:
       - published
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 name: release-please
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release-please:
+    name: release-please
+
+    permissions:
+      contents: write # for pushing the release branch and creating tags and releases
+      pull-requests: write # for opening and updating the release pull request
+
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
