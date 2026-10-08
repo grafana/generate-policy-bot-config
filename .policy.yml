@@ -20,9 +20,9 @@ approval_rules:
         paths:
           - ^go\.mod$
           - ^go\.sum$
-          - ^(?:(?:[^/]*(?:/|$))*)(?:[^/]*)\.go$
+          - ^.*[^/]*\.go$
           - ^Dockerfile$
-          - ^\.github\/workflows\/build\.yml$
+          - ^\.github/workflows/build\.yml$
       file_not_deleted:
         paths:
           - ^\.github/workflows/build\.yml$

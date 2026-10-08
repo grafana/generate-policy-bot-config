@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"io"
-	"iter"
 	"log/slog"
 	"regexp"
 	"slices"
@@ -13,7 +12,6 @@ import (
 	"github.com/palantir/policy-bot/policy/approval"
 	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/policy/predicate"
-	"github.com/redmatter/go-globre/v2"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
@@ -29,64 +27,13 @@ var SkippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 
 // regexpFromGlob converts a GitHub Actions filter pattern into a regular
 // expression.
-//
-// go-globre treats "**" as matching any number of directories only when it is a
-// whole path segment, and as "*" anywhere else. GitHub's "**" matches any
-// characters, including "/", wherever it appears: "**.js" matches
-// "src/js/app.js". So the glob is split at each "**" which isn't a whole
-// segment, and the converted parts are joined with ".*".
-func regexpFromGlob(glob string) string {
-	parts := splitAtPartialGlobstars(glob)
-	regexps := make([]string, len(parts))
-
-	for i, part := range parts {
-		regexp := globre.RegexFromGlob(part, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true))
-		regexps[i] = strings.TrimSuffix(strings.TrimPrefix(regexp, "^"), "$")
+func regexpFromGlob(glob string) (common.Regexp, error) {
+	regexp, err := filterPattern(glob).regexp()
+	if err != nil {
+		return common.Regexp{}, errInvalidFilterPattern{Pattern: glob, Err: err}
 	}
 
-	return "^" + strings.Join(regexps, ".*") + "$"
-}
-
-// splitAtPartialGlobstars splits glob at each run of two or more "*" which
-// isn't a whole path segment. The runs themselves are dropped.
-func splitAtPartialGlobstars(glob string) []string {
-	var parts []string
-	start := 0
-
-	for i := 0; i < len(glob); {
-		if glob[i] != '*' {
-			i++
-			continue
-		}
-
-		end := i
-		for end < len(glob) && glob[end] == '*' {
-			end++
-		}
-
-		wholeSegment := (i == 0 || glob[i-1] == '/') && (end == len(glob) || glob[end] == '/')
-		if end-i > 1 && !wholeSegment {
-			parts = append(parts, glob[start:i])
-			start = end
-		}
-
-		i = end
-	}
-
-	return append(parts, glob[start:])
-}
-
-// regexpsFromGlobs converts a sequence of glob patterns into a sequence of regular
-// expressions. A conversion is needed because policy-bot takes regular
-// expressions and GitHub Actions workflows use glob patterns.
-func regexpStringsFromGlobs(globs iter.Seq[string]) iter.Seq[string] {
-	return func(yield func(string) bool) {
-		for glob := range globs {
-			if !yield(regexpFromGlob(glob)) {
-				return
-			}
-		}
-	}
+	return common.NewRegexp(regexp)
 }
 
 // RegexpsFromGlobs converts a sequence of glob patterns into a sequence of
@@ -99,7 +46,7 @@ func RegexpsFromGlobs(globs []string) ([]common.Regexp, error) {
 	regexps := make([]common.Regexp, len(globs))
 
 	for i, glob := range globs {
-		regexp, err := common.NewRegexp(regexpFromGlob(glob))
+		regexp, err := regexpFromGlob(glob)
 		if err != nil {
 			errors.Globs = append(errors.Globs, glob)
 			continue
@@ -124,11 +71,17 @@ func branchRegexp(branches []string) (common.Regexp, error) {
 		return common.Regexp{}, nil
 	}
 
-	branchFilterRegexps := slices.Collect(regexpStringsFromGlobs(slices.Values(branches)))
+	branchFilterRegexps := make([]string, len(branches))
+	for i, branch := range branches {
+		regexp, err := filterPattern(branch).regexp()
+		if err != nil {
+			return common.Regexp{}, errInvalidFilterPattern{Pattern: branch, Err: err}
+		}
 
-	regex, err := common.NewRegexp(fmt.Sprintf("(%s)", strings.Join(branchFilterRegexps, "|")))
+		branchFilterRegexps[i] = regexp
+	}
 
-	return regex, err
+	return common.NewRegexp(fmt.Sprintf("(%s)", strings.Join(branchFilterRegexps, "|")))
 }
 
 func makeApprovalRule(path string, wf GitHubWorkflow) (*approval.Rule, error) {
