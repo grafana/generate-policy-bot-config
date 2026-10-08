@@ -22,11 +22,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func mustRegexpsFromGlobs(t *testing.T, globs []string) []common.Regexp {
+func mustRegexps(t *testing.T, patterns ...string) []common.Regexp {
 	t.Helper()
 
-	result, err := internal.RegexpsFromGlobs(globs)
-	require.NoError(t, err)
+	result := make([]common.Regexp, len(patterns))
+	for i, pattern := range patterns {
+		re, err := common.NewRegexp(pattern)
+		require.NoError(t, err)
+
+		result[i] = re
+	}
 
 	return result
 }
@@ -365,10 +370,10 @@ on:
 						Name: "Workflow .github/workflows/workflow.yml succeeded or skipped",
 						Predicates: predicate.Predicates{
 							ChangedFiles: &predicate.ChangedFiles{
-								Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
+								Paths: mustRegexps(t, "^src/.*$"),
 							},
 							FileNotDeleted: &predicate.FileNotDeleted{
-								Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/workflow.yml"}),
+								Paths: mustRegexps(t, `^\.github/workflows/workflow\.yml$`),
 							},
 						},
 						Requires: approval.Requires{
@@ -530,10 +535,10 @@ func expectedConfig(t *testing.T) policy.Config {
 				Name: "Workflow .github/workflows/workflow.yml succeeded or skipped",
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
-						Paths: mustRegexpsFromGlobs(t, []string{"src/**"}),
+						Paths: mustRegexps(t, "^src/.*$"),
 					},
 					FileNotDeleted: &predicate.FileNotDeleted{
-						Paths: mustRegexpsFromGlobs(t, []string{".github/workflows/workflow.yml"}),
+						Paths: mustRegexps(t, `^\.github/workflows/workflow\.yml$`),
 					},
 				},
 				Requires: approval.Requires{

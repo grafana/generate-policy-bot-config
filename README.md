@@ -182,6 +182,9 @@ lists and rule names, which don't have this problem.
 
 ## Don't mind the regexes
 
-GitHub Actions uses `doublestar`-style globs for path filters. Policy Bot takes
-regular expressions. The conversion between the two is hairy. We use a library
-to do it. Let it wash over you.
+GitHub Actions has its own [filter pattern syntax][filter patterns] for branch
+and path filters. Policy Bot takes regular expressions. We convert between the
+two ourselves, following what GitHub does in the places where its documentation
+is silent, so some of the regexes look odd. Let it wash over you.
+
+[filter patterns]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet

@@ -6,11 +6,11 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/palantir/policy-bot v1.41.2
-	github.com/redmatter/go-globre/v2 v2.0.0
 	github.com/stretchr/testify v1.12.1
 	github.com/willabides/actionslog v0.5.1
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 	golang.org/x/term v0.46.0
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

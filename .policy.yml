@@ -20,12 +20,12 @@ approval_rules:
         paths:
           - ^go\.mod$
           - ^go\.sum$
-          - ^.*\/.*\.go$
+          - ^.*[^/]*\.go$
           - ^Dockerfile$
-          - ^\.github\/workflows\/build\.yml$
+          - ^\.github/workflows/build\.yml$
       file_not_deleted:
         paths:
-          - ^\.github\/workflows\/build\.yml$
+          - ^\.github/workflows/build\.yml$
     requires:
       conditions:
         has_workflow_result:
@@ -38,7 +38,7 @@ approval_rules:
     if:
       file_not_deleted:
         paths:
-          - ^\.github\/workflows\/lint\.yml$
+          - ^\.github/workflows/lint\.yml$
     requires:
       conditions:
         has_workflow_result:
@@ -51,7 +51,7 @@ approval_rules:
     if:
       file_not_deleted:
         paths:
-          - ^\.github\/workflows\/test\.yml$
+          - ^\.github/workflows/test\.yml$
     requires:
       conditions:
         has_workflow_result:
