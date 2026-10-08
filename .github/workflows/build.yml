@@ -41,6 +41,7 @@ jobs:
     name: Build container image
 
     permissions:
+      artifact-metadata: write # for creating storage records for attested images
       attestations: write # for submitting SBOM and provenance attestations
       contents: write # for dependency submission API
       id-token: write # needed to sign SBOM and provenance attestations
