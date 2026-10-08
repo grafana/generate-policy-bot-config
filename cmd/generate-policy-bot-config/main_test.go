@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -170,6 +171,37 @@ type bytesBufferCloser struct {
 
 func (b *bytesBufferCloser) Close() error {
 	return nil
+}
+
+var errFakeRename = errors.New("fake rename error")
+
+// renameErrorWriter is a WriteCloserRenamerRemover which accepts writes but
+// fails to rename, like a temporary file that can't be moved into place.
+type renameErrorWriter struct {
+	*bytesBufferCloser
+}
+
+func (renameErrorWriter) RenameTo(dest string) error { return errFakeRename }
+func (renameErrorWriter) Remove() error              { return nil }
+
+func TestRunReturnsCloseError(t *testing.T) {
+	mapFS := fstest.MapFS{
+		".github/workflows/workflow.yml": &fstest.MapFile{Data: []byte(`
+on:
+  pull_request:
+    paths: ["src/**"]
+`)},
+	}
+
+	conf := appFlags{
+		Args: rootArgs{Root: rootDir{mapFS}},
+		OutputWriter: &internal.RenamingWriter{
+			WriteCloserRenamerRemover: renameErrorWriter{&bytesBufferCloser{&bytes.Buffer{}}},
+		},
+	}
+
+	err := conf.run("test-command")
+	require.ErrorIs(t, err, errFakeRename)
 }
 
 func TestRun(t *testing.T) {

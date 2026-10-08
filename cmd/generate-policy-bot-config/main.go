@@ -205,7 +205,6 @@ func loadConfigFromReader(r io.Reader) (policy.Config, error) {
 
 func (af *appFlags) run(name string) error {
 	dest := af.OutputWriter
-	defer dest.Close()
 
 	// Find and parse all the workflows
 	workflows, err := af.parsePRWorkflows()
@@ -241,6 +240,10 @@ func (af *appFlags) run(name string) error {
 	if err := internal.WriteYamlToWriter(dest, config); err != nil {
 		af.abort()
 		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	if err := dest.Close(); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
 	}
 
 	return nil
