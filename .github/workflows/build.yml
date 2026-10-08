@@ -99,22 +99,16 @@ jobs:
         id: platform-digests
         shell: bash
         env:
-          TAGS: "${{ steps.calculate-metadata.outputs.tags }}"
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          declare -a TAGS
-          TAGS=($TAGS)
-
-          # Sanitize refs
-          REGISTRY_REF="${TAGS[0]}"
-          BASE_REF="${REGISTRY_REF%%:*}"
-
           # Get digests for each platform
-          MANIFEST_JSON="$(docker buildx imagetools inspect "${REGISTRY_REF}" --format '{{json .}}')"
+          MANIFEST_JSON="$(docker buildx imagetools inspect "${IMAGE_REF}@${DIGEST}" --format '{{json .}}')"
 
           # Create fully qualified references and extract digests
           for arch in amd64 arm64; do
             ARCH_REF="$(jq -r ".manifest.manifests[] | select(.platform.architecture == \"${arch}\").digest" <<< "${MANIFEST_JSON}")"
-            echo "${arch}-ref=${BASE_REF}@${ARCH_REF}" | tee -a "${GITHUB_OUTPUT}"
+            echo "${arch}-ref=${IMAGE_REF}@${ARCH_REF}" | tee -a "${GITHUB_OUTPUT}"
           done
 
       - name: Generate SBOM (amd64)
