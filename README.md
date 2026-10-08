@@ -77,6 +77,15 @@ your other workflows.
 
 See `--help` for more documentation.
 
+### GitHub Actions
+
+Use the [drift-detection action][check-for-drift-action] to check whether a
+committed policy matches the current workflows. The [validation action][validate-action]
+checks a policy through a Policy Bot instance's validation API.
+
+[check-for-drift-action]: actions/check-for-drift/README.md
+[validate-action]: actions/validate/README.md
+
 ## Merge with existing configuration
 
 The `policy.yml` file in this directory contains configuration which is merged

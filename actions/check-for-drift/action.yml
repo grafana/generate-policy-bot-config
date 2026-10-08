@@ -1,0 +1,87 @@
+name: Check for Drift
+description: Checks if the generated output is different from the input file
+
+inputs:
+  input_file:
+    description: Path to the generated policy file, relative to the working directory
+    required: true
+
+  merge_with:
+    description: Path to the policy template to merge with the generated configuration
+    required: false
+
+runs:
+  using: composite
+
+  steps:
+    - name: Set up Go
+      id: setup-go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: ${{ github.action_path }}/../../go.mod
+        cache: false
+
+    - name: Locate Go caches
+      id: cache
+      shell: bash
+      run: |
+        cd "${GITHUB_ACTION_PATH}/../.."
+
+        if command -v sha256sum > /dev/null; then
+          CHECKSUM="$(sha256sum go.sum)"
+        else
+          CHECKSUM="$(shasum -a 256 go.sum)"
+        fi
+
+        {
+          echo "checksum=${CHECKSUM%% *}"
+          echo "modules=$(GOWORK=off go env GOMODCACHE)"
+          echo "build=$(GOWORK=off go env GOCACHE)"
+        } >> "${GITHUB_OUTPUT}"
+
+    - name: Cache Go modules and build outputs
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.cache.outputs.modules }}
+          ${{ steps.cache.outputs.build }}
+        key: policy-generator-${{ runner.os }}-${{ runner.arch }}-go-${{ steps.setup-go.outputs.go-version }}-${{ steps.cache.outputs.checksum }}
+
+    - name: Check for drift
+      shell: bash
+      env:
+        INPUT_FILE: ${{ inputs.input_file }}
+        MERGE_WITH: ${{ inputs.merge_with }}
+      run: |
+        TEMP_DIR="$(mktemp -d "${RUNNER_TEMP}/policy-drift.XXXXXX")"
+        trap 'rm -rf "${TEMP_DIR}"' EXIT
+
+        (
+          cd "${GITHUB_ACTION_PATH}/../.."
+          GOWORK=off go build -o "${TEMP_DIR}/generate-policy-bot-config" ./cmd/generate-policy-bot-config
+        )
+
+        STATUS=0
+        "${TEMP_DIR}/generate-policy-bot-config" \
+          --output - \
+          --merge-with="${MERGE_WITH}" \
+          . > "${TEMP_DIR}/policy.yml" 2> "${TEMP_DIR}/generator.log" || STATUS=$?
+        cat "${TEMP_DIR}/generator.log"
+
+        if (( STATUS != 0 )); then
+          exit "${STATUS}"
+        fi
+
+        STATUS=0
+        diff -u -- "${INPUT_FILE}" "${TEMP_DIR}/policy.yml" || STATUS=$?
+
+        if (( STATUS > 1 )); then
+          exit "${STATUS}"
+        fi
+
+        if (( STATUS == 1 )); then
+          echo "Drift detected: ${INPUT_FILE} is out-of-date. Regenerate it and commit the result."
+          exit 1
+        fi
+
+        echo "No drift detected: ${INPUT_FILE} is up-to-date."

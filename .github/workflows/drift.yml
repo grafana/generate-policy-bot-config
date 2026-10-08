@@ -1,0 +1,45 @@
+name: Check .policy.yml
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - ready_for_review
+      - synchronize
+  push:
+    branches:
+      - main
+
+  merge_group:
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    name: Check for drift and validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check for drift
+        uses: $/actions/check-for-drift
+        with:
+          input_file: .policy.yml
+          merge_with: policy.yml
+
+      - name: Validate Policy Bot configuration
+        uses: $/actions/validate
+        with:
+          policy: .policy.yml
+          validation_endpoint: https://github-policy-bot.grafana-ops.net/api/validate

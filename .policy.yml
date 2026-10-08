@@ -9,6 +9,7 @@ policy:
     - or:
         - and:
             - Workflow .github/workflows/build.yml succeeded or skipped
+            - Workflow .github/workflows/drift.yml succeeded or skipped
             - Workflow .github/workflows/lint.yml succeeded or skipped
             - Workflow .github/workflows/test.yml succeeded or skipped
             - default to approval
@@ -20,7 +21,7 @@ approval_rules:
         paths:
           - ^go\.mod$
           - ^go\.sum$
-          - ^.*\/.*\.go$
+          - ^(?:(?:[^/]*(?:/|$))*)(?:[^/]*)\.go$
           - ^Dockerfile$
           - ^\.github\/workflows\/build\.yml$
       file_not_deleted:
@@ -34,6 +35,19 @@ approval_rules:
             - success
           workflows:
             - .github/workflows/build.yml
+  - name: Workflow .github/workflows/drift.yml succeeded or skipped
+    if:
+      file_not_deleted:
+        paths:
+          - ^\.github\/workflows\/drift\.yml$
+    requires:
+      conditions:
+        has_workflow_result:
+          conclusions:
+            - skipped
+            - success
+          workflows:
+            - .github/workflows/drift.yml
   - name: Workflow .github/workflows/lint.yml succeeded or skipped
     if:
       file_not_deleted:
