@@ -36,12 +36,9 @@ func header(programName string, mergeFilename string) string {
 	return sb.String()
 }
 
-const usage = `%s [path/to/repo_root]
-
-Discovers GitHub Actions workflows and generates a policy bot configuration file
-which enforces that they pass. If paths are specified in the workflow, the policy
-will enforce that the workflow passes only when the paths are modified in the
-PR.`
+const description = "Discovers GitHub Actions workflows and generates a policy bot configuration " +
+	"file which enforces that they pass. If paths are specified in the workflow, the policy " +
+	"will enforce that the workflow passes only when the paths are modified in the PR."
 
 // rootDir represents the root directory to search for workflows. It is a
 // wrapper around fs.FS which reads from a directory when unmarshaled from a
@@ -55,33 +52,100 @@ func (rd *rootDir) UnmarshalFlag(value string) error {
 	return nil
 }
 
-// reader represents the config to merge with the generated config. If the value
-// is "-", read from standard input. If the value is empty, no merging occurs.
-// Otherwise, read from the file at the given path. It is a wrapper around an
-// `io.Reader` so that it can be unmarshaled from a flag straight to a reader
-// and faked in tests.
+// reader is the config to merge with the generated config. A nil Reader means
+// that no merging occurs. The filename is empty when reading from standard
+// input.
 type reader struct {
 	filename string
 	io.Reader
 }
 
-func (m *reader) UnmarshalFlag(value string) error {
-	if value == "" {
-		*m = reader{}
-		return nil
+// mergeSource is where to read the config to merge with the generated config,
+// as given by --merge-with. If the value is "-", read from standard input. If
+// the value is empty, no merging occurs. Otherwise, read from the file at the
+// given path.
+type mergeSource struct {
+	stdin bool
+	path  string
+}
+
+func (m *mergeSource) UnmarshalFlag(value string) error {
+	switch value {
+	case "":
+		*m = mergeSource{}
+	case "-":
+		*m = mergeSource{stdin: true}
+	default:
+		*m = mergeSource{path: value}
 	}
 
-	if value == "-" {
-		*m = reader{Reader: os.Stdin}
-		return nil
+	return nil
+}
+
+// open opens the config to merge. A file is opened with openFile.
+func (m mergeSource) open(openFile func(name string) (io.Reader, error), stdin io.Reader) (reader, error) {
+	if m.stdin {
+		return reader{Reader: stdin}, nil
 	}
 
-	file, err := os.Open(value)
+	if m.path == "" {
+		return reader{}, nil
+	}
+
+	file, err := openFile(m.path)
 	if err != nil {
-		return fmt.Errorf("failed to open merge file: %w", err)
+		return reader{}, fmt.Errorf("failed to open merge file: %w", err)
 	}
 
-	*m = reader{Reader: file, filename: value}
+	return reader{Reader: file, filename: m.path}, nil
+}
+
+func openFile(name string) (io.Reader, error) {
+	return os.Open(name)
+}
+
+// output is where to write the generated config, as given by --output. If the
+// value is "-", write to standard output. Otherwise, write to the file at the
+// given path.
+type output struct {
+	stdout bool
+	path   string
+}
+
+func (o *output) UnmarshalFlag(value string) error {
+	if value == "-" {
+		*o = output{stdout: true}
+		return nil
+	}
+
+	*o = output{path: value}
+	return nil
+}
+
+// write calls generate with a writer for this output. A file is written to a
+// temporary file in fsys, which is only renamed into place if generate
+// succeeds.
+func (o output) write(fsys internal.WritableFS, stdout io.Writer, generate func(io.Writer) error) error {
+	if o.stdout {
+		return generate(stdout)
+	}
+
+	w, err := internal.NewRenamingWriter(fsys, o.path)
+	if err != nil {
+		return err
+	}
+
+	if err := generate(w); err != nil {
+		if abortErr := w.Abort(); abortErr != nil {
+			slog.Warn("failed to abort", "error", abortErr)
+		}
+
+		return err
+	}
+
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
 
 	return nil
 }
@@ -100,13 +164,13 @@ func (l *level) UnmarshalFlag(value string) error {
 }
 
 type rootArgs struct {
-	Root rootDir
+	Root rootDir `positional-arg-name:"REPO_ROOT"`
 }
 
 type appFlags struct {
-	OutputWriter *internal.RenamingWriter `long:"output" short:"o" description:"Output file. If this is \"-\", write to standard output" default:".policy.yml"`
-	LogLevel     *level                   `long:"log-level" short:"l" description:"Log level"`
-	MergeConfig  reader                   `long:"merge-with" short:"m" description:"File to merge with generated config. If this is \"-\", read from standard input. If empty, no merging occurs."`
+	Output    output      `long:"output" short:"o" description:"Output file. If this is \"-\", write to standard output" default:".policy.yml"`
+	LogLevel  *level      `long:"log-level" short:"l" description:"Log level"`
+	MergeWith mergeSource `long:"merge-with" short:"m" description:"File to merge with generated config. If this is \"-\", read from standard input. If empty, no merging occurs."`
 
 	Args rootArgs `positional-args:"yes" required:"yes"`
 }
@@ -186,12 +250,6 @@ func (af *appFlags) parsePRWorkflows() (internal.GitHubWorkflowCollection, error
 	return workflows, nil
 }
 
-func (af *appFlags) abort() {
-	if err := af.OutputWriter.Abort(); err != nil {
-		slog.Warn("failed to abort", "error", err)
-	}
-}
-
 // loadConfigFromReader reads a policy bot config from the given reader. This is
 // used to merge the generated config with an existing config.
 func loadConfigFromReader(r io.Reader) (policy.Config, error) {
@@ -203,14 +261,10 @@ func loadConfigFromReader(r io.Reader) (policy.Config, error) {
 	return config, nil
 }
 
-func (af *appFlags) run(name string) error {
-	dest := af.OutputWriter
-	defer dest.Close()
-
+func (af *appFlags) run(name string, merge reader, w io.Writer) error {
 	// Find and parse all the workflows
 	workflows, err := af.parsePRWorkflows()
 	if err != nil {
-		af.abort()
 		return err
 	}
 
@@ -218,28 +272,24 @@ func (af *appFlags) run(name string) error {
 	config := workflows.PolicyBotConfig()
 
 	// Merge the generated config with an existing config, if one was provided
-	if af.MergeConfig.Reader != nil {
-		mergeConfig, err := loadConfigFromReader(af.MergeConfig)
+	if merge.Reader != nil {
+		mergeConfig, err := loadConfigFromReader(merge)
 		if err != nil {
-			af.abort()
 			return err
 		}
 
 		config, err = internal.MergeConfigs(config, mergeConfig)
 		if err != nil {
-			af.abort()
 			return fmt.Errorf("failed to merge generated config with existing config: %w", err)
 		}
 	}
 
 	// Write the config to the output file
-	if _, err := dest.Write([]byte(header(name, af.MergeConfig.filename))); err != nil {
-		af.abort()
+	if _, err := w.Write([]byte(header(name, merge.filename))); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
-	if err := internal.WriteYamlToWriter(dest, config); err != nil {
-		af.abort()
+	if err := internal.WriteYamlToWriter(w, config); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
@@ -284,26 +334,16 @@ func main() {
 	lv := setupLogger()
 
 	var conf appFlags
-	defer func() {
-		err := conf.OutputWriter.Abort()
-		if err != nil {
-			slog.Warn("attempted to abort when exiting, but failed", "error", err)
-		}
-	}()
-
 	parser := flags.NewParser(&conf, flags.Default)
-	parser.Usage = fmt.Sprintf(usage, parser.Name)
+	parser.LongDescription = description
 
 	if _, err := parser.Parse(); err != nil {
-		switch err.(type) {
-		// The flags package prints its own error messages, don't repeat them
-		case flags.ErrorType:
-		default:
-			slog.Error(err.Error())
-			if !flags.WroteHelp(err) {
-				parser.WriteHelp(os.Stderr)
-			}
+		// The flags package has already printed the error, or the help text
+		// for --help.
+		if flags.WroteHelp(err) {
+			os.Exit(0)
 		}
+
 		os.Exit(1)
 	}
 
@@ -312,7 +352,16 @@ func main() {
 	}
 	slog.Debug("debug logging enabled")
 
-	if err := conf.run(parser.Name); err != nil {
+	merge, err := conf.MergeWith.open(openFile, os.Stdin)
+	if err != nil {
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
+
+	err = conf.Output.write(internal.OSFS{}, os.Stdout, func(w io.Writer) error {
+		return conf.run(parser.Name, merge, w)
+	})
+	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
