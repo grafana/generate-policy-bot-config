@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -57,6 +59,24 @@ func TestParseFlags(t *testing.T) {
 			expected: appFlags{
 				Output: output{path: ".policy.yml"},
 				Args:   rootArgs{Root: rootDir{os.DirFS("testdir")}},
+			},
+		},
+		{
+			name: "Merge config from file",
+			args: []string{"-m", "merge.yml", "testdir"},
+			expected: appFlags{
+				Output:    output{path: ".policy.yml"},
+				MergeWith: mergeSource{path: "merge.yml"},
+				Args:      rootArgs{Root: rootDir{os.DirFS("testdir")}},
+			},
+		},
+		{
+			name: "Merge config from stdin",
+			args: []string{"-m", "-", "testdir"},
+			expected: appFlags{
+				Output:    output{path: ".policy.yml"},
+				MergeWith: mergeSource{stdin: true},
+				Args:      rootArgs{Root: rootDir{os.DirFS("testdir")}},
 			},
 		},
 		{
@@ -151,6 +171,55 @@ func TestOutputWrite(t *testing.T) {
 
 			require.ErrorIs(t, err, tt.expectedError)
 			require.Equal(t, tt.expected, result{files: tt.fsys.Files, stdout: stdout.String()})
+		})
+	}
+}
+
+func TestMergeSourceOpen(t *testing.T) {
+	stdin := strings.NewReader("from stdin")
+	mergeFile := strings.NewReader("from file")
+	openFile := func(name string) (io.Reader, error) {
+		if name != "merge.yml" {
+			return nil, fs.ErrNotExist
+		}
+
+		return mergeFile, nil
+	}
+
+	tests := []struct {
+		name          string
+		source        mergeSource
+		expected      reader
+		expectedError error
+	}{
+		{
+			name:     "No merge config",
+			source:   mergeSource{},
+			expected: reader{},
+		},
+		{
+			name:     "Standard input",
+			source:   mergeSource{stdin: true},
+			expected: reader{Reader: stdin},
+		},
+		{
+			name:     "File",
+			source:   mergeSource{path: "merge.yml"},
+			expected: reader{Reader: mergeFile, filename: "merge.yml"},
+		},
+		{
+			name:          "Missing file",
+			source:        mergeSource{path: "missing.yml"},
+			expectedError: fs.ErrNotExist,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			merge, err := tt.source.open(openFile, stdin)
+
+			require.ErrorIs(t, err, tt.expectedError)
+			require.Equal(t, tt.expected, merge)
 		})
 	}
 }
@@ -281,7 +350,7 @@ on:
 			outputBuffer := &bytes.Buffer{}
 			conf := appFlags{Args: rootArgs{Root: rootDir{mapFS}}}
 
-			err := conf.run("test-command", outputBuffer)
+			err := conf.run("test-command", reader{}, outputBuffer)
 
 			require.NoError(t, err)
 
@@ -341,7 +410,7 @@ on:
 
 		conf := appFlags{Args: rootArgs{Root: rootDir{mapFS}}}
 
-		err := conf.run("test-command", buf)
+		err := conf.run("test-command", reader{}, buf)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -416,13 +485,6 @@ func expectedConfig(t *testing.T) policy.Config {
 	}
 }
 
-func testAppFlags(mapFS fstest.MapFS, mergeReader reader) appFlags {
-	return appFlags{
-		Args:        rootArgs{Root: rootDir{mapFS}},
-		MergeConfig: mergeReader,
-	}
-}
-
 func TestRunWithMerge(t *testing.T) {
 	// Common setup
 	mapFS := fstest.MapFS{
@@ -490,9 +552,9 @@ approval_rules:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outputBuffer := &bytes.Buffer{}
-			conf := testAppFlags(mapFS, tt.mergeReader)
+			conf := appFlags{Args: rootArgs{Root: rootDir{mapFS}}}
 
-			err := conf.run("test-command", outputBuffer)
+			err := conf.run("test-command", tt.mergeReader, outputBuffer)
 
 			if tt.expectedError != nil {
 				require.ErrorIs(t, err, tt.expectedError)
