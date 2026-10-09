@@ -9,6 +9,7 @@ policy:
     - or:
         - and:
             - Workflow .github/workflows/build.yml succeeded or skipped
+            - Workflow .github/workflows/codeql.yml succeeded or skipped
             - Workflow .github/workflows/lint.yml succeeded or skipped
             - Workflow .github/workflows/test.yml succeeded or skipped
             - default to approval
@@ -34,6 +35,21 @@ approval_rules:
             - success
           workflows:
             - .github/workflows/build.yml
+  - name: Workflow .github/workflows/codeql.yml succeeded or skipped
+    if:
+      file_not_deleted:
+        paths:
+          - ^\.github\/workflows\/codeql\.yml$
+      targets_branch:
+        pattern: (^main$)
+    requires:
+      conditions:
+        has_workflow_result:
+          conclusions:
+            - skipped
+            - success
+          workflows:
+            - .github/workflows/codeql.yml
   - name: Workflow .github/workflows/lint.yml succeeded or skipped
     if:
       file_not_deleted:
