@@ -1,13 +1,5 @@
 name: CodeQL
 
-# This replaces CodeQL's "default setup". Default setup doesn't analyze pull
-# requests from forks, so contributors' PRs never got the CodeQL result that
-# the default branch ruleset requires. A plain `pull_request` workflow does run
-# for fork PRs, and its results can still be uploaded to code scanning.
-#
-# Don't switch this to `pull_request_target` or `workflow_run`: that would run
-# untrusted code with a privileged token.
-
 on:
   push:
     branches:
