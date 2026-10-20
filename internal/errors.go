@@ -46,13 +46,157 @@ func (e errUnexpectedType) Error() string {
 	return fmt.Sprintf("unexpected type for workflow `on`. got: %s. expected: string, list or map", e.Type)
 }
 
-// errInvalidGlobs is returned when an invalid glob pattern is encountered in a workflow file.
-type errInvalidGlobs struct {
-	Globs []string
+// errInvalidWorkflowPath is returned when a workflow's path can't be matched by
+// a regular expression, because it isn't valid UTF-8.
+type errInvalidWorkflowPath struct {
+	Path string
+	Err  error
 }
 
-func (e errInvalidGlobs) Error() string {
-	return fmt.Sprintf("invalid globs: %v", strings.Join(e.Globs, ", "))
+func (e errInvalidWorkflowPath) Error() string {
+	return fmt.Sprintf("can't match workflow path %q: %v", e.Path, e.Err)
+}
+
+func (e errInvalidWorkflowPath) Unwrap() error {
+	return e.Err
+}
+
+// errInvalidFilterPattern is returned when a workflow's branch or path filter
+// isn't a valid GitHub Actions filter pattern. Err is one of the errors below,
+// which says what's wrong with it.
+type errInvalidFilterPattern struct {
+	Pattern string
+	Err     error
+}
+
+func (e errInvalidFilterPattern) Error() string {
+	return fmt.Sprintf("invalid filter pattern %q: %v", e.Pattern, e.Err)
+}
+
+func (e errInvalidFilterPattern) Unwrap() error {
+	return e.Err
+}
+
+// errInvalidFilterPatterns is returned when one or more of the patterns in a
+// filter list are invalid. It has an error for each of them.
+type errInvalidFilterPatterns []errInvalidFilterPattern
+
+func (e errInvalidFilterPatterns) Error() string {
+	messages := make([]string, len(e))
+	for i, err := range e {
+		messages[i] = err.Error()
+	}
+
+	return strings.Join(messages, "; ")
+}
+
+func (e errInvalidFilterPatterns) Unwrap() []error {
+	errs := make([]error, len(e))
+	for i, err := range e {
+		errs[i] = err
+	}
+
+	return errs
+}
+
+// errInvalidFilter is returned when one of a workflow event's filters, like
+// `paths` or `branches-ignore`, can't be used.
+type errInvalidFilter struct {
+	Event  string
+	Filter string
+	Err    error
+}
+
+func (e errInvalidFilter) Error() string {
+	return fmt.Sprintf("invalid %s filter for %s: %v", e.Filter, e.Event, e.Err)
+}
+
+func (e errInvalidFilter) Unwrap() error {
+	return e.Err
+}
+
+// errConflictingFilters is returned when a workflow event has both a filter and
+// its `-ignore` variant, like `paths` and `paths-ignore`, which GitHub doesn't
+// allow.
+type errConflictingFilters struct {
+	Event  string
+	Filter string
+}
+
+func (e errConflictingFilters) Error() string {
+	return fmt.Sprintf("%s can't have both %s and %s-ignore", e.Event, e.Filter, e.Filter)
+}
+
+// errMisplacedQuantifier is returned for a "?" or "+" which follows a wildcard
+// or another "?" or "+".
+type errMisplacedQuantifier struct {
+	Quantifier string
+	After      string
+}
+
+func (e errMisplacedQuantifier) Error() string {
+	return fmt.Sprintf("%q can't follow %q", e.Quantifier, e.After)
+}
+
+// errTrailingBackslash is returned for a "\" at the end of a pattern.
+type errTrailingBackslash struct{}
+
+func (errTrailingBackslash) Error() string {
+	return `"\\" at the end has nothing to escape`
+}
+
+// errInvalidEscape is returned for a "\" before a character which can't be
+// escaped.
+type errInvalidEscape struct {
+	Escape string
+}
+
+func (e errInvalidEscape) Error() string {
+	return fmt.Sprintf("%q isn't a valid escape", e.Escape)
+}
+
+// errUnclosedBracket is returned for a "[" with no "]" after it.
+type errUnclosedBracket struct{}
+
+func (errUnclosedBracket) Error() string {
+	return `"[" has no closing "]"`
+}
+
+// errEmptyBrackets is returned for "[]".
+type errEmptyBrackets struct{}
+
+func (errEmptyBrackets) Error() string {
+	return `"[]" is empty`
+}
+
+// errNotAlphanumeric is returned for a character in brackets which isn't an
+// ASCII letter or digit.
+type errNotAlphanumeric struct {
+	Char string
+}
+
+func (e errNotAlphanumeric) Error() string {
+	return fmt.Sprintf("%q in brackets isn't a letter or digit", e.Char)
+}
+
+// errRangeOutOfBounds is returned for a range in brackets whose ends aren't
+// both within A-z, or both within 0-9.
+type errRangeOutOfBounds struct {
+	Range string
+}
+
+func (e errRangeOutOfBounds) Error() string {
+	return fmt.Sprintf("range %q must be within A-z or 0-9", e.Range)
+}
+
+// errBackwardsRange is returned for a range in brackets whose first end comes
+// after its second.
+type errBackwardsRange struct {
+	Range string
+}
+
+func (e errBackwardsRange) Error() string {
+	return fmt.Sprintf("range %q goes backwards", e.Range)
 }
 
 // errMergeDisapproval is returned when we try to merge configs which both

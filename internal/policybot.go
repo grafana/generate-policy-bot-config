@@ -3,8 +3,8 @@ package internal
 import (
 	"fmt"
 	"io"
-	"iter"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -12,7 +12,6 @@ import (
 	"github.com/palantir/policy-bot/policy/approval"
 	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/policy/predicate"
-	"github.com/redmatter/go-globre/v2"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
@@ -26,165 +25,195 @@ const DefaultToApproval = "default to approval"
 // allow the approval rule.
 var SkippedOrSuccess = predicate.AllowedConclusions{"skipped", "success"}
 
-// regexpFromGlob converts a GitHub Actions filter pattern into a regular
-// expression.
-//
-// go-globre treats "**" as matching any number of directories only when it is a
-// whole path segment, and as "*" anywhere else. GitHub's "**" matches any
-// characters, including "/", wherever it appears: "**.js" matches
-// "src/js/app.js". So the glob is split at each "**" which isn't a whole
-// segment, and the converted parts are joined with ".*".
-func regexpFromGlob(glob string) string {
-	parts := splitAtPartialGlobstars(glob)
-	regexps := make([]string, len(parts))
+// requirement is one combination of path and branch filter terms under which a
+// workflow runs.
+type requirement struct {
+	path   filterTerm
+	branch filterTerm
 
-	for i, part := range parts {
-		regexp := globre.RegexFromGlob(part, globre.ExtendedSyntaxEnabled(true), globre.GlobStarEnabled(true))
-		regexps[i] = strings.TrimSuffix(strings.TrimPrefix(regexp, "^"), "$")
-	}
-
-	return "^" + strings.Join(regexps, ".*") + "$"
+	// needsWorkflow is whether the workflow only runs if the pull request
+	// doesn't delete it.
+	needsWorkflow bool
 }
 
-// splitAtPartialGlobstars splits glob at each run of two or more "*" which
-// isn't a whole path segment. The runs themselves are dropped.
-func splitAtPartialGlobstars(glob string) []string {
-	var parts []string
-	start := 0
-
-	for i := 0; i < len(glob); {
-		if glob[i] != '*' {
-			i++
-			continue
-		}
-
-		end := i
-		for end < len(glob) && glob[end] == '*' {
-			end++
-		}
-
-		wholeSegment := (i == 0 || glob[i-1] == '/') && (end == len(glob) || glob[end] == '/')
-		if end-i > 1 && !wholeSegment {
-			parts = append(parts, glob[start:i])
-			start = end
-		}
-
-		i = end
-	}
-
-	return append(parts, glob[start:])
+func (r requirement) sameTerms(other requirement) bool {
+	return r.path.equal(other.path) && r.branch.equal(other.branch)
 }
 
-// regexpsFromGlobs converts a sequence of glob patterns into a sequence of regular
-// expressions. A conversion is needed because policy-bot takes regular
-// expressions and GitHub Actions workflows use glob patterns.
-func regexpStringsFromGlobs(globs iter.Seq[string]) iter.Seq[string] {
-	return func(yield func(string) bool) {
-		for glob := range globs {
-			if !yield(regexpFromGlob(glob)) {
-				return
+// requirements returns the combinations of path and branch filter terms under
+// which the workflow runs. It runs if any of them matches a pull request. If
+// two events have the same terms, the workflow needs to exist only if both
+// events need it.
+func requirements(wf GitHubWorkflow) ([]requirement, error) {
+	var result []requirement
+
+	for _, event := range wf.events() {
+		pathTerms, err := event.pathTerms()
+		if err != nil {
+			return nil, err
+		}
+
+		branchTerms, err := event.branchTerms()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, path := range pathTerms {
+			for _, branch := range branchTerms {
+				r := requirement{path: path, branch: branch, needsWorkflow: !event.fromBase}
+
+				i := slices.IndexFunc(result, r.sameTerms)
+				if i == -1 {
+					result = append(result, r)
+					continue
+				}
+
+				result[i].needsWorkflow = result[i].needsWorkflow && r.needsWorkflow
 			}
 		}
 	}
+
+	return result, nil
 }
 
-// RegexpsFromGlobs converts a sequence of glob patterns into a sequence of
-// regular expressions in `policy-bot`'s `common.Regexp` wrapper type. If any of
-// the glob patterns are invalid, it returns an error containing the invalid
-// globs.
-func RegexpsFromGlobs(globs []string) ([]common.Regexp, error) {
-	var errors errInvalidGlobs
+// changedFilesPredicate returns the changed_files predicate for a path term, or
+// nil if the term doesn't restrict the changed files.
+func changedFilesPredicate(term filterTerm) (*predicate.ChangedFiles, error) {
+	if term.match == nil {
+		return nil, nil
+	}
 
-	regexps := make([]common.Regexp, len(globs))
+	paths, err := compileRegexps(term.match)
+	if err != nil {
+		return nil, err
+	}
 
-	for i, glob := range globs {
-		regexp, err := common.NewRegexp(regexpFromGlob(glob))
+	ignore, err := compileRegexps(term.except)
+	if err != nil {
+		return nil, err
+	}
+
+	return &predicate.ChangedFiles{Paths: paths, IgnorePaths: ignore}, nil
+}
+
+// branchPredicates returns the predicates for a branch term: a pull request's
+// base branch has to match targets, and not exempt. Either is nil if the term
+// doesn't restrict it.
+func branchPredicates(term filterTerm) (targets, exempt *predicate.TargetsBranch, err error) {
+	if term.match != nil {
+		pattern, err := alternation(term.match)
 		if err != nil {
-			errors.Globs = append(errors.Globs, glob)
-			continue
+			return nil, nil, err
 		}
 
-		regexps[i] = regexp
+		targets = &predicate.TargetsBranch{Pattern: pattern}
 	}
 
-	if len(errors.Globs) > 0 {
-		return nil, errors
+	if term.except != nil {
+		pattern, err := alternation(term.except)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		exempt = &predicate.TargetsBranch{Pattern: pattern}
 	}
 
-	if len(regexps) == 0 {
-		return nil, nil
+	return targets, exempt, nil
+}
+
+func compileRegexps(sources []string) ([]common.Regexp, error) {
+	var regexps []common.Regexp
+	for _, source := range sources {
+		re, err := common.NewRegexp(source)
+		if err != nil {
+			return nil, err
+		}
+
+		regexps = append(regexps, re)
 	}
 
 	return regexps, nil
 }
 
-func branchRegexp(branches []string) (common.Regexp, error) {
-	if len(branches) == 0 {
-		return common.Regexp{}, nil
-	}
-
-	branchFilterRegexps := slices.Collect(regexpStringsFromGlobs(slices.Values(branches)))
-
-	regex, err := common.NewRegexp(fmt.Sprintf("(%s)", strings.Join(branchFilterRegexps, "|")))
-
-	return regex, err
+// alternation returns a regular expression which matches if any of sources
+// does.
+func alternation(sources []string) (common.Regexp, error) {
+	return common.NewRegexp(fmt.Sprintf("(%s)", strings.Join(sources, "|")))
 }
 
-func makeApprovalRule(path string, wf GitHubWorkflow) (*approval.Rule, error) {
-	name := fmt.Sprintf("Workflow %s succeeded or skipped", path)
-
-	pathRegexes, err := RegexpsFromGlobs(wf.paths())
+// makeApprovalRules returns the approval rules for a workflow, and the entries
+// which refer to them in the policy's `and` list. There's a rule for each
+// requirement, which requires the workflow to succeed or be skipped. A
+// requirement with an exemption also has a rule which approves the pull request
+// when its base branch is exempt, and the requirement's two rules go under an
+// `or`.
+func makeApprovalRules(path string, wf GitHubWorkflow) ([]*approval.Rule, []interface{}, error) {
+	reqs, err := requirements(wf)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse path filters: %w", err)
+		return nil, nil, err
 	}
 
-	ignoreRegexes, err := RegexpsFromGlobs(wf.ignorePaths())
+	workflowRegexp, err := common.NewRegexp("^" + regexp.QuoteMeta(path) + "$")
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse ignore path filters: %w", err)
+		return nil, nil, errInvalidWorkflowPath{Path: path, Err: err}
 	}
 
-	var preds predicate.Predicates
-	if len(pathRegexes) > 0 || len(ignoreRegexes) > 0 {
-		preds.ChangedFiles = &predicate.ChangedFiles{
-			Paths:       pathRegexes,
-			IgnorePaths: ignoreRegexes,
+	var rules []*approval.Rule
+	var entries []interface{}
+
+	for i, req := range reqs {
+		suffix := ""
+		if len(reqs) > 1 {
+			suffix = fmt.Sprintf(" (%d)", i+1)
 		}
-	}
 
-	branchRegexp, err := branchRegexp(wf.branches())
-	if err != nil {
-		return nil, fmt.Errorf("couldn't parse branch filters: %w", err)
-	}
-
-	if branchRegexp != (common.Regexp{}) {
-		preds.TargetsBranch = &predicate.TargetsBranch{
-			Pattern: branchRegexp,
+		changedFiles, err := changedFilesPredicate(req.path)
+		if err != nil {
+			return nil, nil, err
 		}
-	}
 
-	regexPath, err := RegexpsFromGlobs([]string{path})
-	if err != nil {
-		return nil, fmt.Errorf("couldn't convert path to regex: %w", err)
-	}
+		targets, exempt, err := branchPredicates(req.branch)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	preds.FileNotDeleted = &predicate.FileNotDeleted{
-		Paths: regexPath,
-	}
+		var notDeleted *predicate.FileNotDeleted
+		if req.needsWorkflow {
+			notDeleted = &predicate.FileNotDeleted{Paths: []common.Regexp{workflowRegexp}}
+		}
 
-	requires := approval.Requires{
-		Conditions: predicate.Predicates{
-			HasWorkflowResult: &predicate.HasWorkflowResult{
-				Conclusions: SkippedOrSuccess,
-				Workflows:   []string{path},
+		rule := &approval.Rule{
+			Name: fmt.Sprintf("Workflow %s succeeded or skipped%s", path, suffix),
+			Predicates: predicate.Predicates{
+				ChangedFiles:   changedFiles,
+				TargetsBranch:  targets,
+				FileNotDeleted: notDeleted,
 			},
-		},
+			Requires: approval.Requires{
+				Conditions: predicate.Predicates{
+					HasWorkflowResult: &predicate.HasWorkflowResult{
+						Conclusions: SkippedOrSuccess,
+						Workflows:   []string{path},
+					},
+				},
+			},
+		}
+		rules = append(rules, rule)
+
+		if exempt == nil {
+			entries = append(entries, rule.Name)
+			continue
+		}
+
+		exemption := &approval.Rule{
+			Name:       fmt.Sprintf("Workflow %s not required for this base branch%s", path, suffix),
+			Predicates: predicate.Predicates{TargetsBranch: exempt},
+		}
+		rules = append(rules, exemption)
+		entries = append(entries, map[string]interface{}{"or": []interface{}{rule.Name, exemption.Name}})
 	}
 
-	return &approval.Rule{
-		Name:       name,
-		Predicates: preds,
-		Requires:   requires,
-	}, nil
+	return rules, entries, nil
 }
 
 func (workflows GitHubWorkflowCollection) PolicyBotConfig() policy.Config {
@@ -194,24 +223,26 @@ func (workflows GitHubWorkflowCollection) PolicyBotConfig() policy.Config {
 	paths := maps.Keys(workflows)
 	slices.Sort(paths)
 
+	nWorkflows := 0
 	for _, path := range paths {
 		wf := workflows[path]
 
-		slog.Debug(
-			"building approval rule",
-			"path", path,
-			"n_path_filters", len(wf.paths()),
-			"n_ignore_path_filters", len(wf.ignorePaths()),
-		)
-
-		approvalRule, err := makeApprovalRule(path, wf)
+		rules, entries, err := makeApprovalRules(path, wf)
 		if err != nil {
-			slog.Warn("failed to build approval rule", "path", path, "error", err)
+			slog.Warn("failed to build approval rules", "path", path, "error", err)
 			continue
 		}
 
-		approvalRules = append(approvalRules, approvalRule)
-		policyApprovals = append(policyApprovals, approvalRule.Name)
+		if len(rules) == 0 {
+			slog.Info("workflow's filters don't match any pull request, so it is never required", "path", path)
+			continue
+		}
+
+		slog.Debug("built approval rules", "path", path, "n_rules", len(rules))
+
+		approvalRules = append(approvalRules, rules...)
+		policyApprovals = append(policyApprovals, entries...)
+		nWorkflows++
 	}
 
 	var andApprovals approval.Policy
@@ -245,7 +276,7 @@ func (workflows GitHubWorkflowCollection) PolicyBotConfig() policy.Config {
 		ApprovalRules: approvalRules,
 	}
 
-	slog.Info("built Policy Bot config", "n_workflows", len(approvalRules))
+	slog.Info("built Policy Bot config", "n_workflows", nWorkflows)
 
 	return config
 }

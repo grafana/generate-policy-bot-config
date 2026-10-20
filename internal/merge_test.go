@@ -294,7 +294,7 @@ func TestMergeConfigs_ErrorOnBothConfigsHavingDisapproval(t *testing.T) {
 			Disapproval: &disapproval.Policy{
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
-						Paths: mustRegexpsFromGlobs(t, []string{"*.go"}),
+						Paths: mustRegexps(t, `^[^/]*\.go$`),
 					},
 				},
 			},
@@ -322,7 +322,7 @@ func TestMergeConfigs_GeneratedDisapprovalIsKept(t *testing.T) {
 			Disapproval: &disapproval.Policy{
 				Predicates: predicate.Predicates{
 					ChangedFiles: &predicate.ChangedFiles{
-						Paths: mustRegexpsFromGlobs(t, []string{"*.go"}),
+						Paths: mustRegexps(t, `^[^/]*\.go$`),
 					},
 				},
 			},

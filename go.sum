@@ -32,8 +32,6 @@ github.com/palantir/policy-bot v1.41.2/go.mod h1:5uGIwu+kt5Kl9OpUzJQISl8gUV2zI5x
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/redmatter/go-globre/v2 v2.0.0 h1:8A/hUpOSHaf7GXIJMzneL9G1kJuxjUVDO8rWsrJeg1c=
-github.com/redmatter/go-globre/v2 v2.0.0/go.mod h1:7+CyYNhJEwWoQietUHx7LjllEU+b1p91mVUgkeFZP44=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=
 github.com/rogpeppe/go-internal v1.16.0/go.mod h1:DrUVZyrJU+txYW5/1kwtXQSMFio52ZOxX7yM1VHvnxs=
