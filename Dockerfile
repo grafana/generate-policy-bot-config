@@ -1,4 +1,7 @@
-FROM --platform=${BUILDPLATFORM} golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-builder
+FROM --platform=${BUILDPLATFORM} golang:1.27.3-alpine3.24@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS go-builder
+
+RUN apk add --no-cache 'ca-certificates>=20261020-r0' \
+    && update-ca-certificates
 
 ARG TARGETOS
 ARG TARGETARCH
