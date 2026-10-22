@@ -1,6 +1,6 @@
 module github.com/grafana/generate-policy-bot-config
 
-go 1.26.0
+go 1.27.3
 
 require (
 	github.com/jessevdk/go-flags v1.6.1
