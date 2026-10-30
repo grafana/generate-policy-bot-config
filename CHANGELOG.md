@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.2](https://github.com/grafana/generate-policy-bot-config/compare/v0.2.1...v0.2.2) (2026-10-30)
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** update docker/login-action action to v4.7.0 ([#338](https://github.com/grafana/generate-policy-bot-config/issues/338)) ([f918b1f](https://github.com/grafana/generate-policy-bot-config/commit/f918b1f85b687f813337b1d55e79c198d293fce9))
+* **deps:** update github/codeql-action action to v4.39.1 ([#337](https://github.com/grafana/generate-policy-bot-config/issues/337)) ([af895a2](https://github.com/grafana/generate-policy-bot-config/commit/af895a273d41ced5d81bf08e138de1f33c9ed923))
+* **deps:** update golang:1.27.3-alpine3.24 docker digest to d200d2d [security] ([#339](https://github.com/grafana/generate-policy-bot-config/issues/339)) ([fd11c7a](https://github.com/grafana/generate-policy-bot-config/commit/fd11c7ae3509af90c24dd3e3f3adbd925cd1d51d))
+
 ## [0.2.1](https://github.com/grafana/generate-policy-bot-config/compare/v0.2.0...v0.2.1) (2026-10-22)
 
 
