@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/lmittmann/tint v1.2.1
-	github.com/palantir/policy-bot v1.41.2
+	github.com/palantir/policy-bot v1.42.1
 	github.com/redmatter/go-globre/v2 v2.0.0
 	github.com/stretchr/testify v1.12.1
 	github.com/willabides/actionslog v0.5.1
@@ -15,9 +15,9 @@ require (
 )
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.4 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
-	github.com/google/go-github/v89 v89.0.0 // indirect
+	github.com/google/go-github/v93 v93.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
