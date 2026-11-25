@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.2](https://github.com/grafana/generate-policy-bot-config/compare/v0.2.1...v0.2.2) (2026-11-25)
+
+
+### 🔧 Miscellaneous Chores
+
+* **deps:** update actions/setup-go action to v7.1.0 ([#353](https://github.com/grafana/generate-policy-bot-config/issues/353)) ([aed78d6](https://github.com/grafana/generate-policy-bot-config/commit/aed78d62f70538a5f8e7a5b669167111c5709915))
+* **deps:** update docker/login-action action to v4.7.0 ([#338](https://github.com/grafana/generate-policy-bot-config/issues/338)) ([f918b1f](https://github.com/grafana/generate-policy-bot-config/commit/f918b1f85b687f813337b1d55e79c198d293fce9))
+* **deps:** update docker/login-action action to v4.8.0 ([#348](https://github.com/grafana/generate-policy-bot-config/issues/348)) ([5b3d683](https://github.com/grafana/generate-policy-bot-config/commit/5b3d683c71bf2f7a9612e9246f5ed1ebb747c96b))
+* **deps:** update github/codeql-action action to v4.39.1 ([#337](https://github.com/grafana/generate-policy-bot-config/issues/337)) ([af895a2](https://github.com/grafana/generate-policy-bot-config/commit/af895a273d41ced5d81bf08e138de1f33c9ed923))
+* **deps:** update github/codeql-action action to v4.39.4 ([#347](https://github.com/grafana/generate-policy-bot-config/issues/347)) ([49a4836](https://github.com/grafana/generate-policy-bot-config/commit/49a4836c159ac1152e7d7b724b2aa2789b9afe20))
+* **deps:** update golang docker tag to v1.27.4 [security] ([#349](https://github.com/grafana/generate-policy-bot-config/issues/349)) ([b23386f](https://github.com/grafana/generate-policy-bot-config/commit/b23386fff89f0595852b431a241c664866bdd461))
+* **deps:** update golang:1.27.3-alpine3.24 docker digest to d200d2d [security] ([#339](https://github.com/grafana/generate-policy-bot-config/issues/339)) ([fd11c7a](https://github.com/grafana/generate-policy-bot-config/commit/fd11c7ae3509af90c24dd3e3f3adbd925cd1d51d))
+* **deps:** update golang:1.27.3-alpine3.24 docker digest to dbaa054 [security] ([#345](https://github.com/grafana/generate-policy-bot-config/issues/345)) ([cdb3609](https://github.com/grafana/generate-policy-bot-config/commit/cdb3609e3bef54da5ac39742253abef26735ed2f))
+* **deps:** update golang:1.27.3-alpine3.24 docker digest to fa3d596 [security] ([#346](https://github.com/grafana/generate-policy-bot-config/issues/346)) ([ad39ed8](https://github.com/grafana/generate-policy-bot-config/commit/ad39ed8205ac0bc9b431c6d7aafeece9a484f6e2))
+* **deps:** update golang:1.27.3-alpine3.24 docker digest to fa48812 [security] ([#344](https://github.com/grafana/generate-policy-bot-config/issues/344)) ([7d6ea30](https://github.com/grafana/generate-policy-bot-config/commit/7d6ea300389c78332d034adb1063f92b9154c877))
+* **deps:** update golang:1.27.4-alpine3.24 docker digest to 70bd7dd [security] ([#351](https://github.com/grafana/generate-policy-bot-config/issues/351)) ([1f3182d](https://github.com/grafana/generate-policy-bot-config/commit/1f3182d0da21a7432788a8c80693a8beffe30f64))
+
 ## [0.2.1](https://github.com/grafana/generate-policy-bot-config/compare/v0.2.0...v0.2.1) (2026-10-22)
 
 
